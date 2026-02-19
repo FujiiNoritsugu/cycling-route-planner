@@ -1,0 +1,5 @@
+# Ignore all result files but keep the directory
+*.json
+
+# Allow this .gitignore file
+!.gitignore

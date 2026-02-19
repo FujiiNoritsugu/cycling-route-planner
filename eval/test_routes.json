@@ -1,0 +1,107 @@
+[
+  {
+    "name": "堺市上野芝 → 吉野山（ロングライド、山岳）",
+    "origin": {
+      "lat": 34.573,
+      "lng": 135.483,
+      "name": "堺市上野芝"
+    },
+    "destination": {
+      "lat": 34.396,
+      "lng": 135.757,
+      "name": "吉野山"
+    },
+    "preferences": {
+      "difficulty": "hard",
+      "avoid_traffic": true,
+      "prefer_scenic": true,
+      "max_distance_km": 100,
+      "max_elevation_gain_m": 1500
+    },
+    "departure_time": "2025-03-15T07:00:00"
+  },
+  {
+    "name": "堺 → 六甲山（ヒルクライム）",
+    "origin": {
+      "lat": 34.573,
+      "lng": 135.483,
+      "name": "堺市"
+    },
+    "destination": {
+      "lat": 34.768,
+      "lng": 135.232,
+      "name": "六甲山"
+    },
+    "preferences": {
+      "difficulty": "hard",
+      "avoid_traffic": true,
+      "prefer_scenic": true,
+      "max_distance_km": null,
+      "max_elevation_gain_m": null
+    },
+    "departure_time": "2025-03-15T07:00:00"
+  },
+  {
+    "name": "大和川サイクリングロード往復（初心者向け平坦）",
+    "origin": {
+      "lat": 34.6,
+      "lng": 135.5,
+      "name": "大阪市"
+    },
+    "destination": {
+      "lat": 34.57,
+      "lng": 135.65,
+      "name": "大和川河口"
+    },
+    "preferences": {
+      "difficulty": "easy",
+      "avoid_traffic": true,
+      "prefer_scenic": false,
+      "max_distance_km": null,
+      "max_elevation_gain_m": 100
+    },
+    "departure_time": "2025-03-15T09:00:00"
+  },
+  {
+    "name": "堺 → 暗峠（激坂チャレンジ）",
+    "origin": {
+      "lat": 34.573,
+      "lng": 135.483,
+      "name": "堺市"
+    },
+    "destination": {
+      "lat": 34.678,
+      "lng": 135.666,
+      "name": "暗峠"
+    },
+    "preferences": {
+      "difficulty": "hard",
+      "avoid_traffic": true,
+      "prefer_scenic": true,
+      "max_distance_km": 50,
+      "max_elevation_gain_m": null
+    },
+    "departure_time": "2025-03-15T06:00:00"
+  },
+  {
+    "name": "大阪 → 琵琶湖（超ロングライド）",
+    "origin": {
+      "lat": 34.693,
+      "lng": 135.502,
+      "name": "大阪駅"
+    },
+    "destination": {
+      "lat": 35.004,
+      "lng": 135.868,
+      "name": "琵琶湖大津"
+    },
+    "preferences": {
+      "difficulty": "moderate",
+      "avoid_traffic": true,
+      "prefer_scenic": true,
+      "max_distance_km": 150,
+      "max_elevation_gain_m": null
+    },
+    "departure_time": "2025-03-15T05:00:00"
+  }
+]

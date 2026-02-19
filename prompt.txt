@@ -1,0 +1,49 @@
+サイクリングルートAIプランナーを並列で実装して。以下の4タスクを同時実行:
+
+タスク1（ルート生成パイプライン - planner/）:
+- route_generator.py: OpenRouteService APIでルート座標と距離を取得
+- weather_client.py: OpenMeteo API（https://api.open-meteo.com/v1/forecast）で天気予報取得。APIキー不要
+- elevation.py: ルート上の標高プロファイル取得
+- analyzer.py: ルート・天気・標高データを統合してClaudeに渡すコンテキストを構築
+- risk_assessor.py: 風速・降水確率・獲得標高からリスクレベルを判定
+- tests/: 各モジュールのユニットテスト（外部APIはモック）
+
+タスク2（APIサーバー - backend/）:
+- まず schemas.py を定義（Pydanticモデル、他チームが参照する）
+- services/claude.py: Anthropic AsyncAnthropic でルート分析をストリーミング生成
+  - システムプロンプトにルート座標・天気・標高データを注入
+  - 風向きとルート方向の関係、補給ポイント、危険箇所を分析
+  - 推奨装備（ウインドブレーカー、レインウェアなど）を提案
+- routers/plan.py: POST /api/plan → SSE StreamingResponse
+- routers/weather.py: GET /api/weather → 天気予報JSON
+- routers/history.py: GET /api/history → SQLiteに保存した過去プラン
+- main.py: FastAPI + CORS設定
+- tests/: httpx.AsyncClient で統合テスト
+
+タスク3（フロントエンド - client/）:
+- types.ts: schemas.py に対応するTypeScript型
+- RouteMap: react-leaflet で地図表示。ルートライン、標高による色分け、出発/到着マーカー
+- PlanForm: 出発地/目的地（地図クリックまたは住所入力）、難易度・距離・好み設定
+- WeatherPanel: ルート上の時間帯別天気をタイムライン表示
+- AnalysisPanel: LLMのルート分析テキストをストリーミング表示（Markdown対応）
+- ElevationChart: recharts で標高プロファイルグラフ
+- usePlan hook: fetch + ReadableStream でSSE受信
+- vite.config.ts: /api を localhost:8000 にプロキシ
+- 地図のデフォルト中心は大阪周辺 (34.6, 135.5)
+
+タスク4（評価 - eval/）:
+- test_routes.json: テスト用ルートリクエスト5件
+  - 堺市上野芝 → 吉野山（ロングライド、山岳）
+  - 堺 → 六甲山（ヒルクライム）
+  - 大和川サイクリングロード往復（初心者向け平坦）
+  - 堺 → 暗峠（激坂チャレンジ）
+  - 大阪 → 琵琶湖（超ロングライド）
+- evaluate.py: LLM-as-Judge で品質採点（安全性、天気対応、実用性）
+- bench_api.py: API応答時間のP50/P95/P99計測
+
+依存順序:
+- schemas.py はタスク2が最初に作成すること
+- planner/ と client/ は schemas.py 完成後に並列開始
+- eval/ のコード自体は並列で書けるが、実行は統合後
+
+CLAUDE.md のルールに従い、ディレクトリ所有権を厳守すること。
