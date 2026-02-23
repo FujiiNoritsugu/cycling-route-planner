@@ -7,11 +7,18 @@ and includes all API routers.
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import history, plan, weather
+from .routers import geocode, history, plan, weather
+
+# Load environment variables from project root .env file
+project_root = Path(__file__).parent.parent.parent
+env_path = project_root / ".env"
+load_dotenv(dotenv_path=env_path)
 
 
 @asynccontextmanager
@@ -67,6 +74,7 @@ app.add_middleware(
 app.include_router(plan.router)
 app.include_router(weather.router)
 app.include_router(history.router)
+app.include_router(geocode.router)
 
 
 @app.get("/")

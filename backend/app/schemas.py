@@ -145,3 +145,9 @@ class HistoryResponse(BaseModel):
     """Response wrapper for route history."""
 
     data: list[RoutePlan]
+
+
+class GeocodeResponse(BaseModel):
+    """Response wrapper for geocoding results."""
+
+    data: list[Location] = Field(..., description="List of matching locations")

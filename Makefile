@@ -12,7 +12,7 @@ dev:
 	@echo "🚴 バックエンド + フロントエンド起動..."
 	@if command -v tmux >/dev/null 2>&1; then \
 		tmux new-session -d -s cycling \
-			'cd backend && uv run uvicorn app.main:app --reload --port 8000' \; \
+			'cd backend && PYTHONPATH=$(PWD):$$PYTHONPATH uv run uvicorn app.main:app --reload --port 8080' \; \
 			split-window -h \
 			'cd client && npm run dev' \; \
 			select-layout even-horizontal; \
@@ -20,11 +20,11 @@ dev:
 	else \
 		echo "tmux がないため backend のみ起動します"; \
 		echo "別ターミナルで make frontend を実行してください"; \
-		cd backend && uv run uvicorn app.main:app --reload --port 8000; \
+		cd backend && PYTHONPATH=$(PWD):$$PYTHONPATH uv run uvicorn app.main:app --reload --port 8080; \
 	fi
 
 backend:
-	cd backend && uv run uvicorn app.main:app --reload --port 8000
+	cd backend && PYTHONPATH=$(PWD):$$PYTHONPATH uv run uvicorn app.main:app --reload --port 8080
 
 frontend:
 	cd client && npm run dev

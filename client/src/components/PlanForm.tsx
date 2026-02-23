@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PlanRequest, Location, Difficulty, RoutePreferences } from '../types';
+import { useGeocode } from '../hooks/useGeocode';
 
 interface PlanFormProps {
   onSubmit: (request: PlanRequest) => void;
@@ -33,6 +34,14 @@ export function PlanForm({
   // Location name inputs
   const [originName, setOriginName] = useState('');
   const [destName, setDestName] = useState('');
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
+
+  // Geocoding candidates
+  const [originCandidates, setOriginCandidates] = useState<Location[]>([]);
+  const [destCandidates, setDestCandidates] = useState<Location[]>([]);
+
+  // Geocoding hook
+  const { geocode, isLoading: isGeocoding, error: geocodeApiError } = useGeocode();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,40 +69,120 @@ export function PlanForm({
     onSubmit(request);
   };
 
-  const handleSetOriginByName = () => {
+  const handleSetOriginByName = async () => {
     if (originName.trim()) {
-      // In a real app, this would geocode the address
-      // For now, just set the name
-      if (origin) {
-        onOriginChange({ ...origin, name: originName });
+      setGeocodeError(null);
+      setOriginCandidates([]);
+      const results = await geocode(originName);
+      console.log('Origin search results:', results);
+      if (results.length > 0) {
+        if (results.length === 1) {
+          // Only one result, use it directly
+          onOriginChange(results[0]);
+        } else {
+          // Multiple results, show candidates
+          setOriginCandidates(results);
+        }
+      } else if (!geocodeApiError) {
+        setGeocodeError('場所が見つかりませんでした');
       }
     }
   };
 
-  const handleSetDestByName = () => {
+  const handleSetDestByName = async () => {
     if (destName.trim()) {
-      if (destination) {
-        onDestinationChange({ ...destination, name: destName });
+      setGeocodeError(null);
+      setDestCandidates([]);
+      const results = await geocode(destName);
+      console.log('Destination search results:', results);
+      if (results.length > 0) {
+        if (results.length === 1) {
+          // Only one result, use it directly
+          onDestinationChange(results[0]);
+        } else {
+          // Multiple results, show candidates
+          setDestCandidates(results);
+        }
+      } else if (!geocodeApiError) {
+        setGeocodeError('場所が見つかりませんでした');
       }
     }
+  };
+
+  const handleSelectOriginCandidate = (location: Location) => {
+    onOriginChange(location);
+    setOriginCandidates([]);
+  };
+
+  const handleSelectDestCandidate = (location: Location) => {
+    onDestinationChange(location);
+    setDestCandidates([]);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-gray-800">ルート設定</h2>
 
+      {/* Geocode Error */}
+      {(geocodeError || geocodeApiError) && (
+        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-sm text-yellow-800">
+            {geocodeError || geocodeApiError}
+          </p>
+          <p className="text-xs text-yellow-700 mt-1">
+            ヒント: 「上野芝」「大阪城」など、シンプルな地名を入力してください
+          </p>
+        </div>
+      )}
+
       {/* Origin */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">出発地</label>
         <div className="space-y-2">
-          <input
-            type="text"
-            value={originName}
-            onChange={(e) => setOriginName(e.target.value)}
-            onBlur={handleSetOriginByName}
-            placeholder="地名を入力または地図をクリック"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={originName}
+              onChange={(e) => setOriginName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSetOriginByName();
+                }
+              }}
+              placeholder="例: 上野芝、大阪城（シンプルな地名）"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isGeocoding}
+            />
+            <button
+              type="button"
+              onClick={handleSetOriginByName}
+              disabled={isGeocoding || !originName.trim()}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isGeocoding ? '検索中...' : '検索'}
+            </button>
+          </div>
+          {originCandidates.length > 0 && (
+            <div className="mt-2 border border-gray-300 rounded-md bg-white shadow-sm max-h-48 overflow-y-auto">
+              <div className="p-2 text-xs font-semibold text-gray-700 bg-gray-50 border-b">
+                複数の候補が見つかりました（{originCandidates.length}件）:
+              </div>
+              {originCandidates.map((candidate, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSelectOriginCandidate(candidate)}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b last:border-b-0 text-sm"
+                >
+                  <div className="font-medium">{candidate.name}</div>
+                  <div className="text-xs text-gray-500">
+                    ({candidate.lat.toFixed(4)}, {candidate.lng.toFixed(4)})
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
           {origin && (
             <div className="text-sm text-gray-600">
               {origin.name || '未設定'}
@@ -116,14 +205,50 @@ export function PlanForm({
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">目的地</label>
         <div className="space-y-2">
-          <input
-            type="text"
-            value={destName}
-            onChange={(e) => setDestName(e.target.value)}
-            onBlur={handleSetDestByName}
-            placeholder="地名を入力または地図をクリック"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={destName}
+              onChange={(e) => setDestName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSetDestByName();
+                }
+              }}
+              placeholder="例: 上野芝、大阪城（シンプルな地名）"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isGeocoding}
+            />
+            <button
+              type="button"
+              onClick={handleSetDestByName}
+              disabled={isGeocoding || !destName.trim()}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isGeocoding ? '検索中...' : '検索'}
+            </button>
+          </div>
+          {destCandidates.length > 0 && (
+            <div className="mt-2 border border-gray-300 rounded-md bg-white shadow-sm max-h-48 overflow-y-auto">
+              <div className="p-2 text-xs font-semibold text-gray-700 bg-gray-50 border-b">
+                複数の候補が見つかりました（{destCandidates.length}件）:
+              </div>
+              {destCandidates.map((candidate, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSelectDestCandidate(candidate)}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b last:border-b-0 text-sm"
+                >
+                  <div className="font-medium">{candidate.name}</div>
+                  <div className="text-xs text-gray-500">
+                    ({candidate.lat.toFixed(4)}, {candidate.lng.toFixed(4)})
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
           {destination && (
             <div className="text-sm text-gray-600">
               {destination.name || '未設定'}

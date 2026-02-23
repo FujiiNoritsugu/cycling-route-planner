@@ -68,6 +68,11 @@ export interface ElevationProfile {
   points: ElevationPoint[];
 }
 
+// API Response types
+export interface GeocodeResponse {
+  data: Location[];
+}
+
 // SSE Event types
 export type SSEEvent =
   | { type: 'route_data'; data: Omit<RoutePlan, 'weather_forecasts' | 'llm_analysis'> }
