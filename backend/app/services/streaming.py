@@ -19,10 +19,11 @@ def format_sse(event: str, data: Any) -> str:
     Returns:
         Formatted SSE message string.
     """
-    if not isinstance(data, str):
-        data = json.dumps(data, ensure_ascii=False, default=str)
+    # Wrap data in envelope with type field for frontend compatibility
+    envelope = {"type": event, "data": data}
+    data_json = json.dumps(envelope, ensure_ascii=False, default=str)
 
-    return f"event: {event}\ndata: {data}\n\n"
+    return f"data: {data_json}\n\n"
 
 
 async def stream_route_planning(

@@ -61,17 +61,12 @@ class RouteGenerator:
             "coordinates": [[origin.lng, origin.lat], [destination.lng, destination.lat]],
             "preference": preference,
             "elevation": True,
-            "extra_info": ["surface", "waytypes"],
             "instructions": True,
         }
 
         # Add optional constraints
-        options = {}
-        if preferences.avoid_traffic:
-            options["avoid_features"] = ["highways"]
-
-        if options:
-            payload["options"] = options
+        # Note: avoid_features for cycling profiles is limited
+        # We'll rely on the preference parameter instead
 
         headers = {
             "Authorization": self.api_key,
@@ -138,9 +133,10 @@ class RouteGenerator:
         geometry = feature.get("geometry", {})
         properties = feature.get("properties", {})
 
-        # Get coordinates (ORS returns [lng, lat])
+        # Get coordinates (ORS returns [lng, lat] or [lng, lat, elevation])
+        raw_coords = geometry.get("coordinates", [])
         coordinates = [
-            (lat, lng) for lng, lat in geometry.get("coordinates", [])
+            (coord[1], coord[0]) for coord in raw_coords  # (lat, lng)
         ]
 
         # Get segments from instructions

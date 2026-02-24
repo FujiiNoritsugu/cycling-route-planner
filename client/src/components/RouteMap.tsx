@@ -40,20 +40,6 @@ function MapClickHandler({ onClick }: { onClick?: (location: Location) => void }
   return null;
 }
 
-/**
- * Get color based on elevation (blue = low, red = high)
- */
-function getElevationColor(elevation: number, minElev: number, maxElev: number): string {
-  if (maxElev === minElev) return '#3b82f6'; // blue
-
-  const normalized = (elevation - minElev) / (maxElev - minElev);
-  const r = Math.round(59 + normalized * (239 - 59));
-  const g = Math.round(130 - normalized * 130);
-  const b = Math.round(246 - normalized * 246);
-
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
 export function RouteMap({ origin, destination, segments, onMapClick }: RouteMapProps) {
   // Default center: Osaka area [34.6, 135.5]
   const defaultCenter: LatLngExpression = [34.6, 135.5];
@@ -75,20 +61,8 @@ export function RouteMap({ origin, destination, segments, onMapClick }: RouteMap
     mapCenter = [destination.lat, destination.lng];
   }
 
-  // Extract all coordinates and elevations for color mapping
-  const allCoordinates: Array<{ lat: number; lng: number; elev: number }> = [];
-  segments.forEach((segment) => {
-    segment.coordinates.forEach((coord, idx) => {
-      // Simple elevation estimation based on elevation gain/loss
-      const elevProgress = idx / (segment.coordinates.length - 1);
-      const elev = segment.elevation_gain_m * elevProgress;
-      allCoordinates.push({ lat: coord[0], lng: coord[1], elev });
-    });
-  });
-
-  const elevations = allCoordinates.map((c) => c.elev);
-  const minElev = Math.min(...elevations, 0);
-  const maxElev = Math.max(...elevations, 0);
+  // Use simple blue color for all segments to avoid stack overflow with large coordinate arrays
+  const routeColor = '#3b82f6'; // blue
 
   return (
     <div className="h-full w-full">
@@ -129,31 +103,19 @@ export function RouteMap({ origin, destination, segments, onMapClick }: RouteMap
           </Marker>
         )}
 
-        {/* Route segments with elevation-based coloring */}
+        {/* Route segments */}
         {segments.map((segment, idx) => {
           const positions: LatLngExpression[] = segment.coordinates.map((coord) => [
             coord[0],
             coord[1],
           ]);
 
-          // Calculate average elevation for this segment
-          const segmentElev =
-            allCoordinates
-              .slice(
-                segments.slice(0, idx).reduce((sum, s) => sum + s.coordinates.length, 0),
-                segments.slice(0, idx + 1).reduce((sum, s) => sum + s.coordinates.length, 0)
-              )
-              .reduce((sum, c) => sum + c.elev, 0) /
-            (segment.coordinates.length || 1);
-
-          const color = getElevationColor(segmentElev, minElev, maxElev);
-
           return (
             <Polyline
               key={idx}
               positions={positions}
               pathOptions={{
-                color,
+                color: routeColor,
                 weight: 4,
                 opacity: 0.7,
               }}

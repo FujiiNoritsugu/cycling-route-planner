@@ -11,6 +11,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from planner import RouteGenerator
+
 from ..database import save_route_plan
 from ..schemas import (
     PlanRequest,
@@ -47,18 +49,52 @@ async def plan_route(
 
     async def generate_stream() -> AsyncIterator[str]:
         try:
-            # NOTE: The planner module will be implemented by the route-planner agent
-            # For now, we'll create a mock implementation that will be replaced
-            # when planner.route_generator, planner.weather_client, etc. are available
+            # Initialize route generator
+            route_generator = RouteGenerator()
 
-            # TODO: Replace with actual planner module calls:
-            # from planner import route_generator, weather_client, elevation_service
-            # route_result = await route_generator.generate_route(...)
-            # weather_forecasts = await weather_client.get_forecasts(...)
-            # elevation_data = await elevation_service.get_profile(...)
+            # Convert backend schemas to planner schemas for compatibility
+            from planner.schemas import Location as PlannerLocation
+            from planner.schemas import RoutePreferences as PlannerPreferences
 
-            # Mock data for demonstration (will be replaced by planner module)
-            segments = await _mock_generate_route(request)
+            planner_origin = PlannerLocation(
+                lat=request.origin.lat,
+                lng=request.origin.lng,
+                name=request.origin.name,
+            )
+            planner_dest = PlannerLocation(
+                lat=request.destination.lat,
+                lng=request.destination.lng,
+                name=request.destination.name,
+            )
+            planner_prefs = PlannerPreferences(
+                difficulty=request.preferences.difficulty,
+                avoid_traffic=request.preferences.avoid_traffic,
+                prefer_scenic=request.preferences.prefer_scenic,
+                max_distance_km=request.preferences.max_distance_km,
+                max_elevation_gain_m=request.preferences.max_elevation_gain_m,
+            )
+
+            # Generate route using real OpenRouteService API
+            planner_segments = await route_generator.generate_route(
+                origin=planner_origin,
+                destination=planner_dest,
+                preferences=planner_prefs,
+            )
+
+            # Convert planner segments back to backend schema
+            segments = [
+                RouteSegment(
+                    coordinates=seg.coordinates,
+                    distance_km=seg.distance_km,
+                    elevation_gain_m=seg.elevation_gain_m,
+                    elevation_loss_m=seg.elevation_loss_m,
+                    estimated_duration_min=seg.estimated_duration_min,
+                    surface_type=seg.surface_type,
+                )
+                for seg in planner_segments
+            ]
+
+            # Mock weather for now (will be replaced with real weather client later)
             weather_forecasts = await _mock_get_weather(request)
 
             # Calculate totals
@@ -132,50 +168,6 @@ async def plan_route(
             "X-Accel-Buffering": "no",
         },
     )
-
-
-async def _mock_generate_route(request: PlanRequest) -> list[RouteSegment]:
-    """Mock route generation (to be replaced by planner module).
-
-    Args:
-        request: Route planning request.
-
-    Returns:
-        List of route segments.
-    """
-    # Simple straight line between origin and destination
-    # This will be replaced by actual route generation from planner module
-    origin = request.origin
-    dest = request.destination
-
-    # Calculate approximate distance (Haversine formula approximation)
-    import math
-
-    lat1, lng1 = math.radians(origin.lat), math.radians(origin.lng)
-    lat2, lng2 = math.radians(dest.lat), math.radians(dest.lng)
-
-    dlat = lat2 - lat1
-    dlng = lng2 - lng1
-
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
-    c = 2 * math.asin(math.sqrt(a))
-    distance_km = 6371 * c  # Earth radius in km
-
-    # Create a single segment
-    segment = RouteSegment(
-        coordinates=[
-            (origin.lat, origin.lng),
-            ((origin.lat + dest.lat) / 2, (origin.lng + dest.lng) / 2),
-            (dest.lat, dest.lng),
-        ],
-        distance_km=distance_km,
-        elevation_gain_m=500.0,  # Mock value
-        elevation_loss_m=300.0,  # Mock value
-        estimated_duration_min=int(distance_km * 4),  # ~15km/h average
-        surface_type="paved",
-    )
-
-    return [segment]
 
 
 async def _mock_get_weather(request: PlanRequest) -> list[WeatherForecast]:

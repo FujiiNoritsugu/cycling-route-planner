@@ -126,6 +126,9 @@ python3 -m pytest tests/ -v
 cd backend
 source .venv/bin/activate
 uvicorn app.main:app --reload --port 8080
+またはプロジェクトルートで
+make backend
+
 ```
 
 - サーバー: http://127.0.0.1:8080

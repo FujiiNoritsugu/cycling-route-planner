@@ -66,8 +66,9 @@ export function ElevationChart({ segments }: ElevationChartProps) {
   }
 
   const data = calculateElevationProfile(segments);
-  const maxElevation = Math.max(...data.map(d => d.elevation));
-  const minElevation = Math.min(...data.map(d => d.elevation));
+  const elevations = data.map(d => d.elevation);
+  const maxElevation = elevations.reduce((max, val) => Math.max(max, val), -Infinity);
+  const minElevation = elevations.reduce((min, val) => Math.min(min, val), Infinity);
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
