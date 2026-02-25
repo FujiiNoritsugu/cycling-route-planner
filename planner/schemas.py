@@ -43,6 +43,9 @@ class RouteSegment(BaseModel):
     coordinates: list[tuple[float, float]] = Field(
         ..., description="List of (lat, lng) coordinates"
     )
+    elevations: list[float] | None = Field(
+        None, description="Elevation in meters for each coordinate point"
+    )
     distance_km: float = Field(..., description="Distance in kilometers")
     elevation_gain_m: float = Field(..., description="Elevation gain in meters")
     elevation_loss_m: float = Field(..., description="Elevation loss in meters")

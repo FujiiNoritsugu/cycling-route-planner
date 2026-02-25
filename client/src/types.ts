@@ -29,6 +29,7 @@ export type SurfaceType = 'paved' | 'gravel' | 'dirt';
 
 export interface RouteSegment {
   coordinates: [number, number][]; // [lat, lng]
+  elevations?: number[]; // Elevation in meters for each coordinate point
   distance_km: number;
   elevation_gain_m: number;
   elevation_loss_m: number;

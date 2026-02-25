@@ -73,6 +73,11 @@ class RouteGenerator:
             "Content-Type": "application/json",
         }
 
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"ORS Request payload: {payload}")
+
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -82,6 +87,12 @@ class RouteGenerator:
                 )
                 response.raise_for_status()
                 data = response.json()
+                logger.info(f"ORS Response keys: {data.keys()}")
+                if "features" in data and data["features"]:
+                    geom = data["features"][0].get("geometry", {})
+                    coords = geom.get("coordinates", [])
+                    if coords:
+                        logger.info(f"First coordinate: {coords[0]}, length: {len(coords[0])}")
 
         except httpx.HTTPStatusError as e:
             raise RouteGenerationError(
@@ -138,28 +149,43 @@ class RouteGenerator:
         coordinates = [
             (coord[1], coord[0]) for coord in raw_coords  # (lat, lng)
         ]
+        # Extract elevation data if available (ORS includes elevation when requested)
+        elevations = None
+        if raw_coords and len(raw_coords[0]) > 2:
+            elevations = [coord[2] for coord in raw_coords]
+
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Raw coordinates count: {len(raw_coords)}")
+        if raw_coords:
+            logger.info(f"First coord length: {len(raw_coords[0])}, value: {raw_coords[0][:3] if len(raw_coords[0]) >= 3 else raw_coords[0]}")
+        logger.info(f"Elevations extracted: {len(elevations) if elevations else 0} points")
+        if elevations:
+            logger.info(f"Elevation range: {min(elevations):.1f}m - {max(elevations):.1f}m")
 
         # Get segments from instructions
         segments_data = properties.get("segments", [])
         if not segments_data:
             # Create single segment if no segment data
-            return [self._create_single_segment(coordinates, properties, preferences)]
+            return [self._create_single_segment(coordinates, elevations, properties, preferences)]
 
         # Process multiple segments
         segments = []
         for seg_data in segments_data:
-            segment = self._create_segment_from_data(seg_data, coordinates, preferences)
+            segment = self._create_segment_from_data(seg_data, coordinates, elevations, preferences)
             segments.append(segment)
 
         return segments
 
     def _create_single_segment(
-        self, coordinates: list[tuple[float, float]], properties: dict, preferences: RoutePreferences
+        self, coordinates: list[tuple[float, float]], elevations: list[float] | None, properties: dict, preferences: RoutePreferences
     ) -> RouteSegment:
         """Create a single route segment from full route data.
 
         Args:
             coordinates: List of (lat, lng) coordinates.
+            elevations: List of elevation values in meters, or None.
             properties: Route properties from API.
             preferences: User preferences.
 
@@ -179,6 +205,7 @@ class RouteGenerator:
 
         return RouteSegment(
             coordinates=coordinates,
+            elevations=elevations,
             distance_km=distance_km,
             elevation_gain_m=ascent,
             elevation_loss_m=descent,
@@ -187,13 +214,14 @@ class RouteGenerator:
         )
 
     def _create_segment_from_data(
-        self, seg_data: dict, all_coordinates: list[tuple[float, float]], preferences: RoutePreferences
+        self, seg_data: dict, all_coordinates: list[tuple[float, float]], all_elevations: list[float] | None, preferences: RoutePreferences
     ) -> RouteSegment:
         """Create route segment from segment data.
 
         Args:
             seg_data: Segment data from API.
             all_coordinates: All route coordinates.
+            all_elevations: All elevation values, or None.
             preferences: User preferences.
 
         Returns:
@@ -208,11 +236,13 @@ class RouteGenerator:
         # Extract coordinates for this segment
         # This is simplified - in production would need proper index mapping
         segment_coords = all_coordinates  # Fallback to all coordinates
+        segment_elevations = all_elevations  # Fallback to all elevations
 
         surface_type = self._estimate_surface_type(seg_data, preferences)
 
         return RouteSegment(
             coordinates=segment_coords,
+            elevations=segment_elevations,
             distance_km=distance_km,
             elevation_gain_m=ascent,
             elevation_loss_m=descent,

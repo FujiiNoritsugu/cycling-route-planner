@@ -20,13 +20,22 @@ function calculateElevationProfile(segments: RouteSegment[]): ElevationDataPoint
 
   segments.forEach((segment) => {
     const segmentPoints = segment.coordinates.length;
-    const elevationPerPoint = segment.elevation_gain_m / (segmentPoints - 1 || 1);
+    const hasElevationData = segment.elevations && segment.elevations.length === segmentPoints;
 
     segment.coordinates.forEach((_, idx) => {
       const distanceInSegment = (segment.distance_km * idx) / (segmentPoints - 1 || 1);
-      const elevation = elevationPerPoint * idx;
+
+      // Use actual elevation data if available, otherwise fall back to linear interpolation
+      const elevation = hasElevationData
+        ? segment.elevations![idx]
+        : (segment.elevation_gain_m * idx) / (segmentPoints - 1 || 1);
+
+      const previousElevation = idx > 0
+        ? (hasElevationData ? segment.elevations![idx - 1] : (segment.elevation_gain_m * (idx - 1)) / (segmentPoints - 1 || 1))
+        : elevation;
+
       const gradient = idx > 0
-        ? ((elevation - (elevationPerPoint * (idx - 1))) / (segment.distance_km / (segmentPoints - 1))) * 100
+        ? ((elevation - previousElevation) / (segment.distance_km / (segmentPoints - 1) || 1)) * 100
         : 0;
 
       points.push({
