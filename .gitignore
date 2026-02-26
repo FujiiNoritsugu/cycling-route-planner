@@ -82,3 +82,9 @@ eval/results/*.csv
 *.tmp
 *.temp
 .cache/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/

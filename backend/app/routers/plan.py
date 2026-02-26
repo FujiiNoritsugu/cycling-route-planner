@@ -85,6 +85,7 @@ async def plan_route(
             segments = [
                 RouteSegment(
                     coordinates=seg.coordinates,
+                    elevations=seg.elevations,
                     distance_km=seg.distance_km,
                     elevation_gain_m=seg.elevation_gain_m,
                     elevation_loss_m=seg.elevation_loss_m,
@@ -149,8 +150,8 @@ async def plan_route(
                 created_at=datetime.now(),
             )
 
-            # Save to database
-            save_route_plan(plan)
+            # Save to database (disabled for Cloud Run deployment)
+            # save_route_plan(plan)
 
             # Send completion
             yield format_sse("done", {"status": "complete", "plan_id": plan.id})

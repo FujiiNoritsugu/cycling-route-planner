@@ -1,4 +1,4 @@
-.PHONY: setup dev backend frontend test eval typecheck clean
+.PHONY: setup dev backend frontend test eval typecheck clean deploy-backend deploy-frontend
 
 setup:
 	cp .env.example .env
@@ -44,3 +44,32 @@ typecheck:
 clean:
 	rm -rf backend/.venv planner/.venv eval/.venv client/node_modules
 	rm -rf data/
+
+# GCP Cloud Run deployment (see DEPLOY.md for setup)
+deploy-backend:
+	@echo "🚀 Deploying backend to Cloud Run..."
+	gcloud run deploy cycling-backend \
+		--source . \
+		--dockerfile backend/Dockerfile \
+		--region asia-northeast1 \
+		--allow-unauthenticated \
+		--set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest,ORS_API_KEY=ors-api-key:latest \
+		--memory 1Gi \
+		--cpu 1 \
+		--timeout 300 \
+		--port 8080
+
+deploy-frontend:
+	@echo "🚀 Deploying frontend to Cloud Run..."
+	@if [ ! -f client/.env.production ]; then \
+		echo "❌ client/.env.production not found. Create it with VITE_API_BASE_URL=<backend-url>"; \
+		exit 1; \
+	fi
+	gcloud run deploy cycling-frontend \
+		--source . \
+		--dockerfile client/Dockerfile \
+		--region asia-northeast1 \
+		--allow-unauthenticated \
+		--memory 512Mi \
+		--cpu 1 \
+		--port 8080

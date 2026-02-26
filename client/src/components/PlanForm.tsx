@@ -25,10 +25,15 @@ export function PlanForm({
   const [maxDistance, setMaxDistance] = useState<string>('');
   const [maxElevation, setMaxElevation] = useState<string>('');
   const [departureTime, setDepartureTime] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(7, 0, 0, 0);
-    return tomorrow.toISOString().slice(0, 16);
+    // Get current time in JST (local timezone)
+    const now = new Date();
+    // Format for datetime-local input (YYYY-MM-DDTHH:mm) in local timezone
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   });
 
   // Location name inputs
@@ -59,11 +64,16 @@ export function PlanForm({
       max_elevation_gain_m: maxElevation ? parseFloat(maxElevation) : undefined,
     };
 
+    // Parse datetime-local value as local time (JST) and convert to ISO string
+    // datetime-local format: "2026-02-28T07:00"
+    // This will be interpreted as JST and converted to UTC in ISO format
+    const localDateTime = new Date(departureTime);
+
     const request: PlanRequest = {
       origin,
       destination,
       preferences,
-      departure_time: new Date(departureTime).toISOString(),
+      departure_time: localDateTime.toISOString(),
     };
 
     onSubmit(request);

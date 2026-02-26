@@ -320,6 +320,38 @@ python bench_api.py --iterations 10
 - **リント**: ruff フォーマット適用済み
 - **ドキュメント**: Google style docstring
 
+## デプロイ
+
+### GCP Cloud Run デプロイ（簡易版）
+
+詳細な手順は [DEPLOY.md](DEPLOY.md) を参照してください。
+
+**クイックスタート:**
+
+```bash
+# 1. Secret Manager にAPIキーを登録
+echo -n "YOUR_ANTHROPIC_API_KEY" | gcloud secrets create anthropic-api-key --data-file=-
+echo -n "YOUR_ORS_API_KEY" | gcloud secrets create ors-api-key --data-file=-
+
+# 2. バックエンドをデプロイ
+gcloud run deploy cycling-backend \
+  --source . \
+  --dockerfile backend/Dockerfile \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest,ORS_API_KEY=ors-api-key:latest
+
+# 3. フロントエンドをデプロイ（バックエンドURL取得後）
+# client/.env.production を作成してVITE_API_BASE_URLを設定
+gcloud run deploy cycling-frontend \
+  --source . \
+  --dockerfile client/Dockerfile \
+  --region asia-northeast1 \
+  --allow-unauthenticated
+```
+
+**注意:** 簡易版では履歴保存機能は無効化されています。完全版にはCloud SQLが必要です。
+
 ## ライセンス
 
 MIT License

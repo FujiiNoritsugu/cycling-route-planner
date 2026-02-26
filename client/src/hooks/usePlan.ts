@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import type { PlanRequest, RoutePlan, WeatherForecast } from '../types';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface UsePlanState {
   routePlan: Partial<RoutePlan> | null;
   weatherForecasts: WeatherForecast[];
@@ -40,7 +42,7 @@ export function usePlan(): UsePlanReturn {
     setLlmAnalysis('');
 
     try {
-      const response = await fetch('/api/plan', {
+      const response = await fetch(`${API_BASE_URL}/api/plan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

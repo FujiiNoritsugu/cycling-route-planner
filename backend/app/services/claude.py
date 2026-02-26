@@ -6,6 +6,7 @@ to provide intelligent route analysis, recommendations, and warnings.
 
 import os
 from collections.abc import AsyncIterator
+from zoneinfo import ZoneInfo
 
 from anthropic import AsyncAnthropic
 from anthropic.types import TextDelta
@@ -70,7 +71,7 @@ class ClaudeService:
 
         async with self.client.messages.stream(
             model=CLAUDE_MODEL,
-            max_tokens=2048,
+            max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         ) as stream:
@@ -131,7 +132,7 @@ class ClaudeService:
 - 路面タイプ: {surface_summary}
 - セグメント数: {len(segments)}
 
-## 天気情報
+## 天気情報（すべて日本時間 JST）
 {weather_summary}
 
 ## 風の状況
@@ -146,6 +147,7 @@ class ClaudeService:
 5. **走行時のアドバイス**: ペース配分、風向きとルート方向の関係、時間帯別注意点
 
 注意点:
+- すべての時刻は日本時間（JST）で表示されています
 - 具体的で実用的なアドバイスを提供してください
 - 安全性を最優先してください
 - 日本のサイクリング文化に即した表現を使ってください
@@ -165,8 +167,11 @@ class ClaudeService:
             return "天気情報なし"
 
         lines = []
+        jst = ZoneInfo("Asia/Tokyo")
         for i, forecast in enumerate(forecasts):
-            time_str = forecast.time.strftime("%H:%M")
+            # Convert UTC to JST for display
+            jst_time = forecast.time.astimezone(jst)
+            time_str = jst_time.strftime("%m/%d %H:%M")
             temp = forecast.temperature
             wind = forecast.wind_speed
             precip = forecast.precipitation_probability
