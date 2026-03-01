@@ -7,18 +7,16 @@ WORKDIR /app
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Copy project files
+# Copy backend dependencies first for better caching
 COPY backend/pyproject.toml backend/uv.lock ./backend/
-COPY planner/pyproject.toml planner/uv.lock ./planner/
-COPY backend/app ./backend/app
-COPY planner/planner ./planner/planner
-
-# Set PYTHONPATH to include both backend and planner
-ENV PYTHONPATH=/app:/app/backend:/app/planner:$PYTHONPATH
-
-# Install dependencies for both backend and planner
 RUN cd backend && uv sync --frozen --no-dev
-RUN cd planner && uv sync --frozen --no-dev
+
+# Copy application code
+COPY backend/app ./backend/app
+COPY planner ./planner
+
+# Set PYTHONPATH to include planner module
+ENV PYTHONPATH=/app:/app/backend:$PYTHONPATH
 
 # Expose port (Cloud Run uses PORT environment variable)
 ENV PORT=8080

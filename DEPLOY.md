@@ -46,10 +46,14 @@ echo -n "YOUR_ORS_API_KEY" | gcloud secrets create ors-api-key --data-file=-
 # プロジェクトルートから実行
 cd /path/to/cycling-route-planner
 
-# Cloud Runにデプロイ（自動ビルド）
+# Dockerイメージをビルド
+PROJECT_ID=$(gcloud config get-value project)
+IMAGE="asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/cycling-backend:latest"
+gcloud builds submit --config=backend/cloudbuild.yaml --substitutions=_IMAGE_NAME=$IMAGE .
+
+# Cloud Runにデプロイ
 gcloud run deploy cycling-backend \
-  --source . \
-  --dockerfile backend/Dockerfile \
+  --image $IMAGE \
   --platform managed \
   --region asia-northeast1 \
   --allow-unauthenticated \
@@ -82,20 +86,21 @@ gcloud run services describe cycling-backend \
 # client/.env.production を作成
 cd client
 cat > .env.production << EOF
-VITE_API_BASE_URL=https://cycling-backend-xxxxx-an.a.run.app
+VITE_API_BASE_URL=https://cycling-backend-urtcvfxxra-an.a.run.app
 EOF
 ```
 
 ### 2. フロントエンドをデプロイ
 
 ```bash
-# プロジェクトルートに戻る
-cd ..
+# Dockerイメージをビルド
+PROJECT_ID=$(gcloud config get-value project)
+IMAGE="asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/cycling-frontend:latest"
+gcloud builds submit --config=client/cloudbuild.yaml --substitutions=_IMAGE_NAME=$IMAGE .
 
 # Cloud Runにデプロイ
 gcloud run deploy cycling-frontend \
-  --source . \
-  --dockerfile client/Dockerfile \
+  --image $IMAGE \
   --platform managed \
   --region asia-northeast1 \
   --allow-unauthenticated \
@@ -115,7 +120,7 @@ gcloud run deploy cycling-frontend \
 # フロントエンドURLを環境変数として設定
 gcloud run services update cycling-backend \
   --region asia-northeast1 \
-  --set-env-vars=FRONTEND_URL=https://cycling-frontend-xxxxx-an.a.run.app
+  --set-env-vars=FRONTEND_URL=https://cycling-frontend-urtcvfxxra-an.a.run.app
 ```
 
 ## 動作確認
@@ -130,16 +135,10 @@ gcloud run services update cycling-backend \
 
 ```bash
 # バックエンド更新
-gcloud run deploy cycling-backend \
-  --source . \
-  --dockerfile backend/Dockerfile \
-  --region asia-northeast1
+make deploy-backend
 
 # フロントエンド更新
-gcloud run deploy cycling-frontend \
-  --source . \
-  --dockerfile client/Dockerfile \
-  --region asia-northeast1
+make deploy-frontend
 ```
 
 ## コスト管理

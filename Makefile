@@ -48,9 +48,11 @@ clean:
 # GCP Cloud Run deployment (see DEPLOY.md for setup)
 deploy-backend:
 	@echo "🚀 Deploying backend to Cloud Run..."
+	@PROJECT_ID=$$(gcloud config get-value project) && \
+	IMAGE="asia-northeast1-docker.pkg.dev/$$PROJECT_ID/cloud-run-source-deploy/cycling-backend:latest" && \
+	gcloud builds submit --config=backend/cloudbuild.yaml --substitutions=_IMAGE_NAME=$$IMAGE . && \
 	gcloud run deploy cycling-backend \
-		--source . \
-		--dockerfile backend/Dockerfile \
+		--image $$IMAGE \
 		--region asia-northeast1 \
 		--allow-unauthenticated \
 		--set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest,ORS_API_KEY=ors-api-key:latest \
@@ -65,9 +67,11 @@ deploy-frontend:
 		echo "❌ client/.env.production not found. Create it with VITE_API_BASE_URL=<backend-url>"; \
 		exit 1; \
 	fi
+	@PROJECT_ID=$$(gcloud config get-value project) && \
+	IMAGE="asia-northeast1-docker.pkg.dev/$$PROJECT_ID/cloud-run-source-deploy/cycling-frontend:latest" && \
+	gcloud builds submit --config=client/cloudbuild.yaml --substitutions=_IMAGE_NAME=$$IMAGE . && \
 	gcloud run deploy cycling-frontend \
-		--source . \
-		--dockerfile client/Dockerfile \
+		--image $$IMAGE \
 		--region asia-northeast1 \
 		--allow-unauthenticated \
 		--memory 512Mi \
