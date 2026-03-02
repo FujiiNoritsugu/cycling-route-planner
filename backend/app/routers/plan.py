@@ -11,7 +11,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from planner import RouteGenerator
+from planner import RouteGenerator, WeatherClient
 
 from ..database import save_route_plan
 from ..schemas import (
@@ -95,8 +95,11 @@ async def plan_route(
                 for seg in planner_segments
             ]
 
-            # Mock weather for now (will be replaced with real weather client later)
-            weather_forecasts = await _mock_get_weather(request)
+            # Get weather forecasts using real WeatherClient
+            weather_forecasts = await _get_route_weather(
+                segments=segments,
+                departure_time=request.departure_time,
+            )
 
             # Calculate totals
             total_distance_km = sum(seg.distance_km for seg in segments)
@@ -171,27 +174,63 @@ async def plan_route(
     )
 
 
-async def _mock_get_weather(request: PlanRequest) -> list[WeatherForecast]:
-    """Mock weather forecast (to be replaced by planner module).
+async def _get_route_weather(
+    segments: list[RouteSegment],
+    departure_time: datetime,
+) -> list[WeatherForecast]:
+    """Get weather forecasts along the route using OpenMeteo API.
 
     Args:
-        request: Route planning request.
+        segments: Route segments with coordinates.
+        departure_time: Route departure time.
 
     Returns:
-        List of weather forecasts.
+        List of weather forecasts along the route.
     """
-    # Mock forecast at departure time
-    forecast = WeatherForecast(
-        time=request.departure_time,
-        temperature=18.0,
-        wind_speed=3.5,
-        wind_direction=180.0,
-        precipitation_probability=10.0,
-        weather_code=1,
-        description="晴れ",
+    if not segments:
+        return []
+
+    # Extract locations from route segments
+    from planner.schemas import Location as PlannerLocation
+
+    locations = []
+    for segment in segments:
+        if segment.coordinates:
+            # Sample every 10th coordinate or use all if less than 10
+            step = max(1, len(segment.coordinates) // 10)
+            for lat, lng in segment.coordinates[::step]:
+                locations.append(PlannerLocation(lat=lat, lng=lng))
+
+    if not locations:
+        return []
+
+    # Calculate total duration in hours
+    total_duration_min = sum(seg.estimated_duration_min for seg in segments)
+    duration_hours = max(1, total_duration_min // 60)
+
+    # Get weather forecasts using WeatherClient
+    weather_client = WeatherClient()
+    planner_forecasts = await weather_client.get_route_forecast(
+        locations=locations,
+        start_time=departure_time,
+        duration_hours=duration_hours,
     )
 
-    return [forecast]
+    # Convert planner WeatherForecast to backend WeatherForecast
+    weather_forecasts = [
+        WeatherForecast(
+            time=f.time,
+            temperature=f.temperature,
+            wind_speed=f.wind_speed,
+            wind_direction=f.wind_direction,
+            precipitation_probability=f.precipitation_probability,
+            weather_code=f.weather_code,
+            description=f.description,
+        )
+        for f in planner_forecasts
+    ]
+
+    return weather_forecasts
 
 
 def _extract_warnings(analysis: str, forecasts: list[WeatherForecast]) -> list[str]:

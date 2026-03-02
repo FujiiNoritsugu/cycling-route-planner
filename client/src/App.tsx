@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PlanForm } from './components/PlanForm';
 import { RouteMap } from './components/RouteMap';
 import { WeatherPanel } from './components/WeatherPanel';
@@ -21,6 +21,19 @@ function App() {
     submitPlan,
     reset,
   } = usePlan();
+
+  // Load OFUSE widget script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://ofuse.me/assets/platform/widget.js';
+    script.async = true;
+    script.charset = 'utf-8';
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   const handleMapClick = (location: Location) => {
     if (!origin) {
@@ -57,12 +70,22 @@ function App() {
             <h1 className="text-2xl font-bold text-gray-900">
               Cycling Route AI Planner
             </h1>
-            <button
-              onClick={handleReset}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-            >
-              リセット
-            </button>
+            <div className="flex items-center gap-4">
+              <a
+                data-ofuse-widget-button
+                href="https://ofuse.me/o?uid=157879"
+                data-ofuse-id="157879"
+                className="inline-block"
+              >
+                OFUSEで応援を送る
+              </a>
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                リセット
+              </button>
+            </div>
           </div>
           {clickMode && (
             <div className="mt-2 text-sm text-blue-600">
