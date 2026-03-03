@@ -5,6 +5,7 @@ import { WeatherPanel } from './components/WeatherPanel';
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { ElevationChart } from './components/ElevationChart';
 import { usePlan } from './hooks/usePlan';
+import { GpxExportButton } from './components/GpxExportButton';
 import type { Location } from './types';
 
 function App() {
@@ -200,6 +201,11 @@ function App() {
                     </span>
                   </div>
                 </div>
+                {routePlan.segments && routePlan.segments.length > 0 && origin && destination && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <GpxExportButton routePlan={routePlan} origin={origin} destination={destination} />
+                  </div>
+                )}
               </div>
             )}
 
