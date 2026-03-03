@@ -16,36 +16,36 @@ class WeatherClient:
 
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
-    # WMO Weather interpretation codes
+    # WMO Weather interpretation codes (Japanese)
     WEATHER_CODES = {
-        0: "Clear sky",
-        1: "Mainly clear",
-        2: "Partly cloudy",
-        3: "Overcast",
-        45: "Fog",
-        48: "Depositing rime fog",
-        51: "Light drizzle",
-        53: "Moderate drizzle",
-        55: "Dense drizzle",
-        56: "Light freezing drizzle",
-        57: "Dense freezing drizzle",
-        61: "Slight rain",
-        63: "Moderate rain",
-        65: "Heavy rain",
-        66: "Light freezing rain",
-        67: "Heavy freezing rain",
-        71: "Slight snow fall",
-        73: "Moderate snow fall",
-        75: "Heavy snow fall",
-        77: "Snow grains",
-        80: "Slight rain showers",
-        81: "Moderate rain showers",
-        82: "Violent rain showers",
-        85: "Slight snow showers",
-        86: "Heavy snow showers",
-        95: "Thunderstorm",
-        96: "Thunderstorm with slight hail",
-        99: "Thunderstorm with heavy hail",
+        0: "快晴",
+        1: "晴れ",
+        2: "一部曇り",
+        3: "曇り",
+        45: "霧",
+        48: "霧氷",
+        51: "小雨",
+        53: "雨",
+        55: "強い霧雨",
+        56: "小雨（凍結）",
+        57: "強い霧雨（凍結）",
+        61: "弱い雨",
+        63: "雨",
+        65: "強い雨",
+        66: "弱い雨（凍結）",
+        67: "強い雨（凍結）",
+        71: "弱い雪",
+        73: "雪",
+        75: "強い雪",
+        77: "霰",
+        80: "弱いにわか雨",
+        81: "にわか雨",
+        82: "激しいにわか雨",
+        85: "弱いにわか雪",
+        86: "にわか雪",
+        95: "雷雨",
+        96: "雷雨（軽い雹）",
+        99: "雷雨（強い雹）",
     }
 
     async def get_forecast(
@@ -67,6 +67,11 @@ class WeatherClient:
         Raises:
             WeatherAPIError: If API request fails.
         """
+        # Ensure start_time is timezone-aware
+        from datetime import timezone
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+
         params = {
             "latitude": location.lat,
             "longitude": location.lng,
@@ -78,7 +83,7 @@ class WeatherClient:
                 "weather_code",
             ],
             "forecast_days": min(7, (hours // 24) + 1),
-            "timezone": "auto",
+            "timezone": "UTC",  # Request UTC timezone to match our datetime objects
         }
 
         try:
@@ -121,26 +126,28 @@ class WeatherClient:
         if not locations:
             return []
 
-        # Sample up to 5 locations along the route
-        sample_count = min(5, len(locations))
-        step = max(1, len(locations) // sample_count)
-        sample_locations = locations[::step]
+        # Ensure start_time is timezone-aware
+        from datetime import timezone
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
 
-        # Get forecast for each location
-        all_forecasts = []
-        for i, location in enumerate(sample_locations):
-            # Calculate approximate time at this location
-            time_offset = (duration_hours / len(sample_locations)) * i
-            location_time = start_time + timedelta(hours=time_offset)
+        # Use a representative location (middle of route) for weather forecast
+        # to avoid duplicates and provide relevant weather along the route
+        if len(locations) == 1:
+            representative_location = locations[0]
+        else:
+            # Use middle location
+            mid_index = len(locations) // 2
+            representative_location = locations[mid_index]
 
-            forecasts = await self.get_forecast(
-                location, location_time, hours=duration_hours
-            )
-            all_forecasts.extend(forecasts)
+        # Get forecast for the representative location covering the entire route duration
+        forecasts = await self.get_forecast(
+            representative_location,
+            start_time,
+            hours=duration_hours
+        )
 
-        # Remove duplicates and sort by time
-        unique_forecasts = {f.time: f for f in all_forecasts}
-        return sorted(unique_forecasts.values(), key=lambda f: f.time)
+        return forecasts
 
     def _parse_forecast(
         self, data: dict, start_time: datetime, hours: int
@@ -164,23 +171,25 @@ class WeatherClient:
         weather_codes = hourly.get("weather_code", [])
 
         forecasts = []
-        end_time = start_time + timedelta(hours=hours)
 
-        # Make start_time and end_time timezone-aware if they aren't
-        if start_time.tzinfo is None:
-            from datetime import timezone
-            start_time_aware = start_time.replace(tzinfo=timezone.utc)
-            end_time_aware = end_time.replace(tzinfo=timezone.utc)
-        else:
-            start_time_aware = start_time
-            end_time_aware = end_time
+        # start_time should already be timezone-aware (converted in get_forecast/get_route_forecast)
+        # Calculate end_time
+        end_time = start_time + timedelta(hours=hours)
 
         for i, time_str in enumerate(times):
             # Parse time (ISO 8601 format)
-            time = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+            # OpenMeteo may return times without timezone suffix even when timezone=UTC
+            if time_str.endswith("Z"):
+                time = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+            elif "+" in time_str or time_str.count("-") > 2:  # Has timezone offset
+                time = datetime.fromisoformat(time_str)
+            else:
+                # No timezone info, assume UTC (since we requested timezone=UTC)
+                from datetime import timezone as tz
+                time = datetime.fromisoformat(time_str).replace(tzinfo=tz.utc)
 
             # Filter to requested time range
-            if time < start_time_aware or time > end_time_aware:
+            if time < start_time or time > end_time:
                 continue
 
             # Extract values (handle missing data)

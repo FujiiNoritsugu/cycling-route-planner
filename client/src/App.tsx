@@ -161,23 +161,13 @@ function App() {
             )}
           </div>
 
-          {/* Right Sidebar - Weather, Analysis, Elevation */}
+          {/* Right Sidebar - Weather, Route Summary, Elevation, Analysis */}
           <div className="lg:col-span-4 space-y-6">
             {/* Weather Panel */}
             <WeatherPanel
               forecasts={weatherForecasts}
               warnings={routePlan?.warnings || []}
             />
-
-            {/* Analysis Panel */}
-            <AnalysisPanel
-              analysis={llmAnalysis}
-              recommendedGear={routePlan?.recommended_gear || []}
-              isStreaming={isLoading}
-            />
-
-            {/* Elevation Chart */}
-            <ElevationChart segments={routePlan?.segments || []} />
 
             {/* Route Summary */}
             {routePlan && (
@@ -212,6 +202,16 @@ function App() {
                 </div>
               </div>
             )}
+
+            {/* Elevation Chart */}
+            <ElevationChart segments={routePlan?.segments || []} />
+
+            {/* Analysis Panel */}
+            <AnalysisPanel
+              analysis={llmAnalysis}
+              recommendedGear={routePlan?.recommended_gear || []}
+              isStreaming={isLoading}
+            />
           </div>
         </div>
       </main>

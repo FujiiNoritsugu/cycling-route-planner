@@ -38,7 +38,22 @@ function formatDate(isoString: string): string {
 }
 
 export function WeatherPanel({ forecasts, warnings }: WeatherPanelProps) {
-  if (forecasts.length === 0) {
+  // Remove duplicate forecasts based on time
+  const uniqueForecasts = forecasts.reduce((acc, forecast) => {
+    // Check if we already have a forecast for this time
+    const exists = acc.some(f => f.time === forecast.time);
+    if (!exists) {
+      acc.push(forecast);
+    }
+    return acc;
+  }, [] as WeatherForecast[]);
+
+  // Debug: Log if duplicates were removed
+  if (forecasts.length !== uniqueForecasts.length) {
+    console.log(`Removed ${forecasts.length - uniqueForecasts.length} duplicate forecasts`);
+  }
+
+  if (uniqueForecasts.length === 0) {
     return (
       <div className="p-6 bg-white rounded-lg shadow-md">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">天気予報</h3>
@@ -67,39 +82,47 @@ export function WeatherPanel({ forecasts, warnings }: WeatherPanelProps) {
 
       {/* Weather Timeline */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {forecasts.map((forecast, idx) => (
-          <div
-            key={idx}
-            className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="text-3xl">{getWeatherIcon(forecast.weather_code)}</div>
-              <div>
-                <div className="text-sm font-medium text-gray-800">
-                  {formatDate(forecast.time)} {formatTime(forecast.time)}
-                </div>
-                <div className="text-xs text-gray-600">{forecast.description}</div>
-              </div>
-            </div>
+        {uniqueForecasts.map((forecast, idx) => {
+          // Ensure all required fields exist
+          if (!forecast || !forecast.time) {
+            console.warn('Invalid forecast data at index', idx, forecast);
+            return null;
+          }
 
-            <div className="text-right space-y-1">
-              <div className="text-lg font-semibold text-gray-800">
-                {forecast.temperature.toFixed(1)}°C
+          return (
+            <div
+              key={idx}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="text-3xl">{getWeatherIcon(forecast.weather_code ?? 0)}</div>
+                <div>
+                  <div className="text-sm font-medium text-gray-800">
+                    {formatDate(forecast.time)} {formatTime(forecast.time)}
+                  </div>
+                  <div className="text-xs text-gray-600">{forecast.description || 'N/A'}</div>
+                </div>
               </div>
-              <div className="text-xs text-gray-600">
-                風速: {forecast.wind_speed.toFixed(1)} m/s
-              </div>
-              <div className="text-xs text-gray-600">
-                降水確率: {forecast.precipitation_probability.toFixed(0)}%
+
+              <div className="text-right space-y-1">
+                <div className="text-lg font-semibold text-gray-800">
+                  {(forecast.temperature ?? 0).toFixed(1)}°C
+                </div>
+                <div className="text-xs text-gray-600">
+                  風速: {(forecast.wind_speed ?? 0).toFixed(1)} m/s
+                </div>
+                <div className="text-xs text-gray-600">
+                  降水確率: {(forecast.precipitation_probability ?? 0).toFixed(0)}%
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {forecasts.length > 5 && (
+      {uniqueForecasts.length > 5 && (
         <div className="mt-3 text-xs text-gray-500 text-center">
-          {forecasts.length} 件の予報データ
+          {uniqueForecasts.length} 件の予報データ
         </div>
       )}
     </div>

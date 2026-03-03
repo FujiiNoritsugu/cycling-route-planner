@@ -97,7 +97,11 @@ export function usePlan(): UsePlanReturn {
                   break;
 
                 case 'error':
-                  setError(event.data);
+                  // Extract error message from object: {message: "..."}
+                  const errorMsg = typeof event.data === 'string'
+                    ? event.data
+                    : event.data?.message || 'Unknown error occurred';
+                  setError(errorMsg);
                   setIsLoading(false);
                   break;
 

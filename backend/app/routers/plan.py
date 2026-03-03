@@ -108,7 +108,7 @@ async def plan_route(
 
             # Send route data
             route_data = {
-                "segments": [seg.model_dump() for seg in segments],
+                "segments": [seg.model_dump(mode='json') for seg in segments],
                 "total_distance_km": total_distance_km,
                 "total_elevation_gain_m": total_elevation_gain_m,
                 "total_duration_min": total_duration_min,
@@ -116,7 +116,7 @@ async def plan_route(
             yield format_sse("route_data", route_data)
 
             # Send weather data
-            weather_data = [w.model_dump() for w in weather_forecasts]
+            weather_data = [w.model_dump(mode='json') for w in weather_forecasts]
             yield format_sse("weather", weather_data)
 
             # Stream LLM analysis
@@ -189,6 +189,11 @@ async def _get_route_weather(
     """
     if not segments:
         return []
+
+    # Ensure departure_time is timezone-aware
+    from datetime import timezone
+    if departure_time.tzinfo is None:
+        departure_time = departure_time.replace(tzinfo=timezone.utc)
 
     # Extract locations from route segments
     from planner.schemas import Location as PlannerLocation
