@@ -22,6 +22,7 @@ export function PlanForm({
   const [difficulty, setDifficulty] = useState<Difficulty>('moderate');
   const [avoidTraffic, setAvoidTraffic] = useState(true);
   const [preferScenic, setPreferScenic] = useState(true);
+  const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [maxDistance, setMaxDistance] = useState<string>('');
   const [maxElevation, setMaxElevation] = useState<string>('');
   const [departureTime, setDepartureTime] = useState(() => {
@@ -62,6 +63,7 @@ export function PlanForm({
       prefer_scenic: preferScenic,
       max_distance_km: maxDistance ? parseFloat(maxDistance) : undefined,
       max_elevation_gain_m: maxElevation ? parseFloat(maxElevation) : undefined,
+      is_round_trip: isRoundTrip,
     };
 
     // Parse datetime-local value as local time (JST) and convert to ISO string
@@ -316,6 +318,20 @@ export function PlanForm({
           />
           <label htmlFor="preferScenic" className="ml-2 block text-sm text-gray-700">
             景色の良いルートを優先
+          </label>
+        </div>
+
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="isRoundTrip"
+            checked={isRoundTrip}
+            onChange={(e) => setIsRoundTrip(e.target.checked)}
+            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+          />
+          <label htmlFor="isRoundTrip" className="ml-2 block text-sm text-gray-700">
+            往復ルートで計画する
+            <span className="ml-1 text-xs text-gray-500">（行きと帰りで別ルート）</span>
           </label>
         </div>
       </div>

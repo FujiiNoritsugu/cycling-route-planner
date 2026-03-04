@@ -16,6 +16,7 @@ export interface RoutePreferences {
   prefer_scenic: boolean;
   max_distance_km?: number;
   max_elevation_gain_m?: number;
+  is_round_trip?: boolean;
 }
 
 export interface PlanRequest {
@@ -26,6 +27,7 @@ export interface PlanRequest {
 }
 
 export type SurfaceType = 'paved' | 'gravel' | 'dirt';
+export type SegmentType = 'outbound' | 'return';
 
 export interface RouteSegment {
   coordinates: [number, number][]; // [lat, lng]
@@ -35,6 +37,7 @@ export interface RouteSegment {
   elevation_loss_m: number;
   estimated_duration_min: number;
   surface_type: SurfaceType;
+  segment_type?: SegmentType;
 }
 
 export interface WeatherForecast {

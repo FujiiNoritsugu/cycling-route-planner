@@ -26,6 +26,7 @@ class RoutePreferences(BaseModel):
     max_elevation_gain_m: float | None = Field(
         None, description="Maximum elevation gain in meters"
     )
+    is_round_trip: bool = Field(False, description="Generate round trip route")
 
 
 class PlanRequest(BaseModel):
@@ -51,6 +52,7 @@ class RouteSegment(BaseModel):
     elevation_loss_m: float = Field(..., description="Elevation loss in meters")
     estimated_duration_min: int = Field(..., description="Estimated duration in minutes")
     surface_type: str = Field(..., description="paved | gravel | dirt")
+    segment_type: str = Field("outbound", description="outbound | return")
 
 
 class WeatherForecast(BaseModel):

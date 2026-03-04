@@ -32,6 +32,9 @@ class RoutePreferences(BaseModel):
     max_elevation_gain_m: float | None = Field(
         None, ge=0, description="Maximum total elevation gain in meters"
     )
+    is_round_trip: bool = Field(
+        False, description="Generate round trip route (outbound + return)"
+    )
 
 
 class PlanRequest(BaseModel):
@@ -64,6 +67,9 @@ class RouteSegment(BaseModel):
     )
     surface_type: Literal["paved", "gravel", "dirt"] = Field(
         ..., description="Road surface type"
+    )
+    segment_type: Literal["outbound", "return"] = Field(
+        "outbound", description="Segment type for round trip routes"
     )
 
 

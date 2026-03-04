@@ -1,9 +1,15 @@
 """Route generation using OpenRouteService API."""
 
+import logging
+import math
 import os
 from typing import Literal
+
 import httpx
-from planner.schemas import Location, RouteSegment, RoutePreferences
+
+from planner.schemas import Location, RoutePreferences, RouteSegment
+
+logger = logging.getLogger(__name__)
 
 
 class RouteGenerationError(Exception):
@@ -38,6 +44,7 @@ class RouteGenerator:
         destination: Location,
         preferences: RoutePreferences,
         profile: Literal["cycling-regular", "cycling-road", "cycling-mountain"] = "cycling-regular",
+        avoid_coordinates: list[tuple[float, float]] | None = None,
     ) -> list[RouteSegment]:
         """Generate a cycling route from origin to destination.
 
@@ -46,6 +53,8 @@ class RouteGenerator:
             destination: Ending location.
             preferences: Route preferences.
             profile: Cycling profile (regular, road, mountain).
+            avoid_coordinates: Optional list of (lat, lng) coordinates to avoid.
+                Used to generate a different return route.
 
         Returns:
             List of route segments.
@@ -57,25 +66,24 @@ class RouteGenerator:
         preference = self._determine_preference(preferences)
 
         # Build request payload
-        payload = {
+        payload: dict = {
             "coordinates": [[origin.lng, origin.lat], [destination.lng, destination.lat]],
             "preference": preference,
             "elevation": True,
             "instructions": True,
         }
 
-        # Add optional constraints
-        # Note: avoid_features for cycling profiles is limited
-        # We'll rely on the preference parameter instead
+        # Add avoid_polygons if coordinates to avoid are provided
+        if avoid_coordinates:
+            avoid_polygons = self._create_avoid_polygons(avoid_coordinates)
+            if avoid_polygons:
+                payload["options"] = {"avoid_polygons": avoid_polygons}
 
         headers = {
             "Authorization": self.api_key,
             "Content-Type": "application/json",
         }
 
-        # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
         logger.info(f"ORS Request payload: {payload}")
 
         try:
@@ -105,6 +113,79 @@ class RouteGenerator:
 
         # Parse response and create route segments
         return self._parse_response(data, preferences)
+
+    def _create_avoid_polygons(
+        self,
+        coordinates: list[tuple[float, float]],
+        buffer_m: float = 300,
+        max_points: int = 20,
+    ) -> dict | None:
+        """Create GeoJSON MultiPolygon to avoid given coordinates.
+
+        Creates small rectangular buffers around sampled coordinates
+        to force the route generator to find an alternative path.
+
+        Args:
+            coordinates: List of (lat, lng) coordinates to avoid.
+            buffer_m: Buffer distance in meters.
+            max_points: Maximum number of points to sample.
+
+        Returns:
+            GeoJSON MultiPolygon or None if insufficient coordinates.
+        """
+        if len(coordinates) < 2:
+            return None
+
+        # Sample coordinates to avoid API limits
+        step = max(1, len(coordinates) // max_points)
+        sampled = coordinates[::step]
+
+        # Limit to max_points
+        if len(sampled) > max_points:
+            sampled = sampled[:max_points]
+
+        # Create small rectangular polygons around each sampled point
+        polygons = []
+        for lat, lng in sampled:
+            polygon = self._create_buffer_rect(lat, lng, buffer_m)
+            polygons.append(polygon)
+
+        # Return as GeoJSON MultiPolygon
+        return {
+            "type": "MultiPolygon",
+            "coordinates": polygons,
+        }
+
+    def _create_buffer_rect(
+        self,
+        lat: float,
+        lng: float,
+        buffer_m: float,
+    ) -> list:
+        """Create a rectangular polygon buffer around a point.
+
+        Args:
+            lat: Latitude of center point.
+            lng: Longitude of center point.
+            buffer_m: Buffer distance in meters.
+
+        Returns:
+            Polygon coordinates in GeoJSON format [[[lng, lat], ...]].
+        """
+        # Convert meters to approximate degrees
+        # 1 degree latitude ≈ 111,000 meters
+        # 1 degree longitude varies with latitude
+        lat_offset = buffer_m / 111000
+        lng_offset = buffer_m / (111000 * math.cos(math.radians(lat)))
+
+        # Create rectangle corners (GeoJSON uses [lng, lat] order)
+        return [[
+            [lng - lng_offset, lat - lat_offset],
+            [lng + lng_offset, lat - lat_offset],
+            [lng + lng_offset, lat + lat_offset],
+            [lng - lng_offset, lat + lat_offset],
+            [lng - lng_offset, lat - lat_offset],  # Close the polygon
+        ]]
 
     def _determine_preference(
         self, preferences: RoutePreferences
@@ -155,8 +236,6 @@ class RouteGenerator:
             elevations = [coord[2] for coord in raw_coords]
 
         # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
         logger.info(f"Raw coordinates count: {len(raw_coords)}")
         if raw_coords:
             logger.info(f"First coord length: {len(raw_coords[0])}, value: {raw_coords[0][:3] if len(raw_coords[0]) >= 3 else raw_coords[0]}")

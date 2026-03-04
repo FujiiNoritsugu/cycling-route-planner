@@ -61,8 +61,10 @@ export function RouteMap({ origin, destination, segments, onMapClick }: RouteMap
     mapCenter = [destination.lat, destination.lng];
   }
 
-  // Use simple blue color for all segments to avoid stack overflow with large coordinate arrays
-  const routeColor = '#3b82f6'; // blue
+  // Color based on segment type: outbound = blue, return = green
+  const getRouteColor = (segmentType?: string) => {
+    return segmentType === 'return' ? '#10b981' : '#3b82f6';
+  };
 
   return (
     <div className="h-full w-full">
@@ -110,12 +112,14 @@ export function RouteMap({ origin, destination, segments, onMapClick }: RouteMap
             coord[1],
           ]);
 
+          const segmentLabel = segment.segment_type === 'return' ? '復路' : '往路';
+
           return (
             <Polyline
               key={idx}
               positions={positions}
               pathOptions={{
-                color: routeColor,
+                color: getRouteColor(segment.segment_type),
                 weight: 4,
                 opacity: 0.7,
               }}
@@ -123,7 +127,7 @@ export function RouteMap({ origin, destination, segments, onMapClick }: RouteMap
               <Popup>
                 <div className="text-sm">
                   <div>
-                    <strong>区間 {idx + 1}</strong>
+                    <strong>{segmentLabel} - 区間 {idx + 1}</strong>
                   </div>
                   <div>距離: {segment.distance_km.toFixed(2)} km</div>
                   <div>獲得標高: {segment.elevation_gain_m.toFixed(0)} m</div>

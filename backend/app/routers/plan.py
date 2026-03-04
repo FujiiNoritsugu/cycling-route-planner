@@ -72,28 +72,39 @@ async def plan_route(
                 prefer_scenic=request.preferences.prefer_scenic,
                 max_distance_km=request.preferences.max_distance_km,
                 max_elevation_gain_m=request.preferences.max_elevation_gain_m,
+                is_round_trip=request.preferences.is_round_trip,
             )
 
-            # Generate route using real OpenRouteService API
-            planner_segments = await route_generator.generate_route(
-                origin=planner_origin,
-                destination=planner_dest,
-                preferences=planner_prefs,
-            )
-
-            # Convert planner segments back to backend schema
-            segments = [
-                RouteSegment(
-                    coordinates=seg.coordinates,
-                    elevations=seg.elevations,
-                    distance_km=seg.distance_km,
-                    elevation_gain_m=seg.elevation_gain_m,
-                    elevation_loss_m=seg.elevation_loss_m,
-                    estimated_duration_min=seg.estimated_duration_min,
-                    surface_type=seg.surface_type,
+            # Generate route(s) using real OpenRouteService API
+            if request.preferences.is_round_trip:
+                # Generate round trip: outbound + return routes
+                segments = await _generate_round_trip_route(
+                    route_generator=route_generator,
+                    origin=planner_origin,
+                    destination=planner_dest,
+                    preferences=planner_prefs,
                 )
-                for seg in planner_segments
-            ]
+            else:
+                # Generate single one-way route
+                planner_segments = await route_generator.generate_route(
+                    origin=planner_origin,
+                    destination=planner_dest,
+                    preferences=planner_prefs,
+                )
+                # Convert planner segments back to backend schema
+                segments = [
+                    RouteSegment(
+                        coordinates=seg.coordinates,
+                        elevations=seg.elevations,
+                        distance_km=seg.distance_km,
+                        elevation_gain_m=seg.elevation_gain_m,
+                        elevation_loss_m=seg.elevation_loss_m,
+                        estimated_duration_min=seg.estimated_duration_min,
+                        surface_type=seg.surface_type,
+                        segment_type="outbound",
+                    )
+                    for seg in planner_segments
+                ]
 
             # Get weather forecasts using real WeatherClient
             weather_forecasts = await _get_route_weather(
@@ -299,3 +310,90 @@ def _extract_gear_recommendations(analysis: str) -> list[str]:
         gear.append("アイウェア")
 
     return gear
+
+
+async def _generate_round_trip_route(
+    route_generator: "RouteGenerator",
+    origin: "PlannerLocation",
+    destination: "PlannerLocation",
+    preferences: "PlannerPreferences",
+) -> list[RouteSegment]:
+    """Generate round trip route with different outbound and return paths.
+
+    Args:
+        route_generator: RouteGenerator instance.
+        origin: Starting location.
+        destination: Destination location.
+        preferences: Route preferences.
+
+    Returns:
+        List of route segments (outbound + return).
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Import here to avoid circular imports
+    from planner.schemas import Location as PlannerLocation
+    from planner.schemas import RoutePreferences as PlannerPreferences
+
+    # Generate outbound route (origin -> destination)
+    outbound_planner_segments = await route_generator.generate_route(
+        origin=origin,
+        destination=destination,
+        preferences=preferences,
+    )
+
+    # Collect outbound coordinates for avoidance
+    outbound_coords: list[tuple[float, float]] = []
+    for seg in outbound_planner_segments:
+        outbound_coords.extend(seg.coordinates)
+
+    # Convert outbound segments to backend schema
+    outbound_segments = [
+        RouteSegment(
+            coordinates=seg.coordinates,
+            elevations=seg.elevations,
+            distance_km=seg.distance_km,
+            elevation_gain_m=seg.elevation_gain_m,
+            elevation_loss_m=seg.elevation_loss_m,
+            estimated_duration_min=seg.estimated_duration_min,
+            surface_type=seg.surface_type,
+            segment_type="outbound",
+        )
+        for seg in outbound_planner_segments
+    ]
+
+    # Generate return route (destination -> origin), avoiding outbound path
+    try:
+        return_planner_segments = await route_generator.generate_route(
+            origin=destination,
+            destination=origin,
+            preferences=preferences,
+            avoid_coordinates=outbound_coords,
+        )
+    except Exception as e:
+        # Fallback: generate return route without avoidance
+        logger.warning(f"Failed to generate alternative return route: {e}")
+        logger.info("Falling back to standard return route")
+        return_planner_segments = await route_generator.generate_route(
+            origin=destination,
+            destination=origin,
+            preferences=preferences,
+        )
+
+    # Convert return segments to backend schema
+    return_segments = [
+        RouteSegment(
+            coordinates=seg.coordinates,
+            elevations=seg.elevations,
+            distance_km=seg.distance_km,
+            elevation_gain_m=seg.elevation_gain_m,
+            elevation_loss_m=seg.elevation_loss_m,
+            estimated_duration_min=seg.estimated_duration_min,
+            surface_type=seg.surface_type,
+            segment_type="return",
+        )
+        for seg in return_planner_segments
+    ]
+
+    return outbound_segments + return_segments
