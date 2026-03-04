@@ -38,22 +38,7 @@ function formatDate(isoString: string): string {
 }
 
 export function WeatherPanel({ forecasts, warnings }: WeatherPanelProps) {
-  // Remove duplicate forecasts based on time
-  const uniqueForecasts = forecasts.reduce((acc, forecast) => {
-    // Check if we already have a forecast for this time
-    const exists = acc.some(f => f.time === forecast.time);
-    if (!exists) {
-      acc.push(forecast);
-    }
-    return acc;
-  }, [] as WeatherForecast[]);
-
-  // Debug: Log if duplicates were removed
-  if (forecasts.length !== uniqueForecasts.length) {
-    console.log(`Removed ${forecasts.length - uniqueForecasts.length} duplicate forecasts`);
-  }
-
-  if (uniqueForecasts.length === 0) {
+  if (forecasts.length === 0) {
     return (
       <div className="p-6 bg-white rounded-lg shadow-md">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">天気予報</h3>
@@ -82,7 +67,7 @@ export function WeatherPanel({ forecasts, warnings }: WeatherPanelProps) {
 
       {/* Weather Timeline */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {uniqueForecasts.map((forecast, idx) => {
+        {forecasts.map((forecast, idx) => {
           // Ensure all required fields exist
           if (!forecast || !forecast.time) {
             console.warn('Invalid forecast data at index', idx, forecast);
@@ -120,9 +105,9 @@ export function WeatherPanel({ forecasts, warnings }: WeatherPanelProps) {
         })}
       </div>
 
-      {uniqueForecasts.length > 5 && (
+      {forecasts.length > 5 && (
         <div className="mt-3 text-xs text-gray-500 text-center">
-          {uniqueForecasts.length} 件の予報データ
+          {forecasts.length} 件の予報データ
         </div>
       )}
     </div>

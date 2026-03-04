@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { PlanRequest, RoutePlan, WeatherForecast } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -25,8 +25,11 @@ export function usePlan(): UsePlanReturn {
   const [llmAnalysis, setLlmAnalysis] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setRoutePlan(null);
     setWeatherForecasts([]);
     setLlmAnalysis('');
@@ -35,6 +38,11 @@ export function usePlan(): UsePlanReturn {
   }, []);
 
   const submitPlan = useCallback(async (request: PlanRequest) => {
+    // Abort any in-flight request
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setIsLoading(true);
     setError(null);
     setRoutePlan(null);
@@ -48,6 +56,7 @@ export function usePlan(): UsePlanReturn {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -115,6 +124,10 @@ export function usePlan(): UsePlanReturn {
         }
       }
     } catch (err) {
+      // Ignore abort errors from cancelled requests
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       setIsLoading(false);
