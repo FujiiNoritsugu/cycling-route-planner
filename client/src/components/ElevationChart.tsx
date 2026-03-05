@@ -51,19 +51,6 @@ function calculateElevationProfile(segments: RouteSegment[]): ElevationDataPoint
   return points;
 }
 
-/**
- * Get color based on gradient steepness
- * Note: Currently unused but kept for future gradient visualization
- */
-// function getGradientColor(gradient: number): string {
-//   if (gradient > 10) return '#ef4444'; // steep uphill - red
-//   if (gradient > 5) return '#f59e0b'; // moderate uphill - orange
-//   if (gradient > 0) return '#10b981'; // gentle uphill - green
-//   if (gradient > -5) return '#3b82f6'; // gentle downhill - blue
-//   if (gradient > -10) return '#6366f1'; // moderate downhill - indigo
-//   return '#8b5cf6'; // steep downhill - purple
-// }
-
 export function ElevationChart({ segments }: ElevationChartProps) {
   if (segments.length === 0) {
     return (
