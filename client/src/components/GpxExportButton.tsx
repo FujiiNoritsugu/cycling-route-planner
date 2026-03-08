@@ -5,13 +5,14 @@ interface GpxExportButtonProps {
   routePlan: Partial<RoutePlan>;
   origin: Location;
   destination: Location;
+  waypoints?: Location[];
 }
 
-export function GpxExportButton({ routePlan, origin, destination }: GpxExportButtonProps) {
+export function GpxExportButton({ routePlan, origin, destination, waypoints }: GpxExportButtonProps) {
   const disabled = !routePlan.segments || routePlan.segments.length === 0;
 
   const handleClick = () => {
-    downloadGpx({ routePlan, origin, destination });
+    downloadGpx({ routePlan, origin, destination, waypoints });
   };
 
   return (

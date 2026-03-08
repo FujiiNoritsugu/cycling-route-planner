@@ -45,6 +45,7 @@ class RouteGenerator:
         preferences: RoutePreferences,
         profile: Literal["cycling-regular", "cycling-road", "cycling-mountain"] = "cycling-regular",
         avoid_coordinates: list[tuple[float, float]] | None = None,
+        waypoints: list[Location] | None = None,
     ) -> list[RouteSegment]:
         """Generate a cycling route from origin to destination.
 
@@ -65,9 +66,14 @@ class RouteGenerator:
         # Determine preference parameter based on user preferences
         preference = self._determine_preference(preferences)
 
-        # Build request payload
+        # Build request payload with optional waypoints
+        coords = [[origin.lng, origin.lat]]
+        if waypoints:
+            coords.extend([[wp.lng, wp.lat] for wp in waypoints])
+        coords.append([destination.lng, destination.lat])
+
         payload: dict = {
-            "coordinates": [[origin.lng, origin.lat], [destination.lng, destination.lat]],
+            "coordinates": coords,
             "preference": preference,
             "elevation": True,
             "instructions": True,

@@ -75,6 +75,14 @@ async def plan_route(
                 is_round_trip=request.preferences.is_round_trip,
             )
 
+            # Convert waypoints to planner schema
+            planner_waypoints = None
+            if request.waypoints:
+                planner_waypoints = [
+                    PlannerLocation(lat=wp.lat, lng=wp.lng, name=wp.name)
+                    for wp in request.waypoints
+                ]
+
             # Generate route(s) using real OpenRouteService API
             if request.preferences.is_round_trip:
                 # Generate round trip: outbound + return routes
@@ -83,6 +91,7 @@ async def plan_route(
                     origin=planner_origin,
                     destination=planner_dest,
                     preferences=planner_prefs,
+                    waypoints=planner_waypoints,
                 )
             else:
                 # Generate single one-way route
@@ -90,6 +99,7 @@ async def plan_route(
                     origin=planner_origin,
                     destination=planner_dest,
                     preferences=planner_prefs,
+                    waypoints=planner_waypoints,
                 )
                 # Convert planner segments back to backend schema
                 segments = [
@@ -138,6 +148,7 @@ async def plan_route(
                 total_distance_km=total_distance_km,
                 total_elevation_gain_m=total_elevation_gain_m,
                 difficulty=request.preferences.difficulty,
+                waypoints=request.waypoints,
             ):
                 llm_analysis_parts.append(token)
                 yield format_sse("token", token)
@@ -317,6 +328,7 @@ async def _generate_round_trip_route(
     origin: "PlannerLocation",
     destination: "PlannerLocation",
     preferences: "PlannerPreferences",
+    waypoints: "list[PlannerLocation] | None" = None,
 ) -> list[RouteSegment]:
     """Generate round trip route with different outbound and return paths.
 
@@ -336,11 +348,12 @@ async def _generate_round_trip_route(
     from planner.schemas import Location as PlannerLocation
     from planner.schemas import RoutePreferences as PlannerPreferences
 
-    # Generate outbound route (origin -> destination)
+    # Generate outbound route (origin -> waypoints -> destination)
     outbound_planner_segments = await route_generator.generate_route(
         origin=origin,
         destination=destination,
         preferences=preferences,
+        waypoints=waypoints,
     )
 
     # Collect outbound coordinates for avoidance

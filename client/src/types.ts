@@ -22,6 +22,7 @@ export interface RoutePreferences {
 export interface PlanRequest {
   origin: Location;
   destination: Location;
+  waypoints?: Location[];
   preferences: RoutePreferences;
   departure_time: string; // ISO 8601 datetime string
 }

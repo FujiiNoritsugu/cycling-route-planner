@@ -11,7 +11,8 @@ import type { Location } from './types';
 function App() {
   const [origin, setOrigin] = useState<Location | null>(null);
   const [destination, setDestination] = useState<Location | null>(null);
-  const [clickMode, setClickMode] = useState<'origin' | 'destination' | null>(null);
+  const [waypoints, setWaypoints] = useState<Location[]>([]);
+  const [clickMode, setClickMode] = useState<'origin' | 'destination' | 'waypoint' | null>(null);
 
   const {
     routePlan,
@@ -37,6 +38,10 @@ function App() {
   }, []);
 
   const handleMapClick = (location: Location) => {
+    if (clickMode === 'waypoint') {
+      setWaypoints(prev => [...prev, location]);
+      return;
+    }
     if (!origin) {
       setOrigin(location);
       setClickMode('destination');
@@ -58,6 +63,7 @@ function App() {
   const handleReset = () => {
     setOrigin(null);
     setDestination(null);
+    setWaypoints([]);
     setClickMode(null);
     reset();
   };
@@ -90,7 +96,7 @@ function App() {
           </div>
           {clickMode && (
             <div className="mt-2 text-sm text-blue-600">
-              地図をクリックして{clickMode === 'origin' ? '出発地' : '目的地'}を設定してください
+              地図をクリックして{clickMode === 'origin' ? '出発地' : clickMode === 'destination' ? '目的地' : '経由地'}を設定してください
             </div>
           )}
         </div>
@@ -108,6 +114,8 @@ function App() {
               destination={destination}
               onOriginChange={setOrigin}
               onDestinationChange={setDestination}
+              waypoints={waypoints}
+              onWaypointsChange={setWaypoints}
             />
 
             {/* Click Mode Toggle */}
@@ -137,6 +145,16 @@ function App() {
                   >
                     目的地を変更
                   </button>
+                  <button
+                    onClick={() => setClickMode(clickMode === 'waypoint' ? null : 'waypoint')}
+                    className={`w-full px-3 py-2 text-sm rounded-md transition-colors ${
+                      clickMode === 'waypoint'
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                    }`}
+                  >
+                    経由地を追加
+                  </button>
                 </div>
               </div>
             )}
@@ -148,6 +166,7 @@ function App() {
               <RouteMap
                 origin={origin}
                 destination={destination}
+                waypoints={waypoints}
                 segments={routePlan?.segments || []}
                 onMapClick={handleMapClick}
               />
@@ -203,7 +222,7 @@ function App() {
                 </div>
                 {routePlan.segments && routePlan.segments.length > 0 && origin && destination && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <GpxExportButton routePlan={routePlan} origin={origin} destination={destination} />
+                    <GpxExportButton routePlan={routePlan} origin={origin} destination={destination} waypoints={waypoints} />
                   </div>
                 )}
               </div>

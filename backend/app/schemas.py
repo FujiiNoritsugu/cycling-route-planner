@@ -42,6 +42,9 @@ class PlanRequest(BaseModel):
 
     origin: Location = Field(..., description="Starting point")
     destination: Location = Field(..., description="Destination point")
+    waypoints: list[Location] | None = Field(
+        None, description="Optional intermediate waypoints in order", max_length=10
+    )
     preferences: RoutePreferences = Field(..., description="Route preferences")
     departure_time: datetime = Field(..., description="Planned departure time")
 

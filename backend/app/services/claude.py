@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from anthropic import AsyncAnthropic
 from anthropic.types import TextDelta
 
-from ..schemas import RouteSegment, WeatherForecast
+from ..schemas import Location, RouteSegment, WeatherForecast
 
 # Model configuration
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
@@ -43,6 +43,7 @@ class ClaudeService:
         total_distance_km: float,
         total_elevation_gain_m: float,
         difficulty: str,
+        waypoints: list[Location] | None = None,
     ) -> AsyncIterator[str]:
         """Stream route analysis and recommendations from Claude.
 
@@ -52,6 +53,7 @@ class ClaudeService:
             total_distance_km: Total route distance in kilometers.
             total_elevation_gain_m: Total elevation gain in meters.
             difficulty: Requested difficulty level (easy/moderate/hard).
+            waypoints: Optional intermediate waypoints.
 
         Yields:
             Text chunks from Claude's streaming response.
@@ -62,6 +64,7 @@ class ClaudeService:
             total_distance_km=total_distance_km,
             total_elevation_gain_m=total_elevation_gain_m,
             difficulty=difficulty,
+            waypoints=waypoints,
         )
 
         user_message = (
@@ -90,6 +93,7 @@ class ClaudeService:
         total_distance_km: float,
         total_elevation_gain_m: float,
         difficulty: str,
+        waypoints: list[Location] | None = None,
     ) -> str:
         """Build system prompt with route and weather context.
 
@@ -99,6 +103,7 @@ class ClaudeService:
             total_distance_km: Total distance.
             total_elevation_gain_m: Total elevation gain.
             difficulty: Difficulty level.
+            waypoints: Optional intermediate waypoints.
 
         Returns:
             Formatted system prompt for Claude.
@@ -122,6 +127,14 @@ class ClaudeService:
             else 0
         )
 
+        # Waypoint info
+        waypoint_info = ""
+        if waypoints:
+            wp_names = [
+                wp.name or f"({wp.lat:.4f}, {wp.lng:.4f})" for wp in waypoints
+            ]
+            waypoint_info = f"- 経由地: {' → '.join(wp_names)}\n"
+
         prompt = f"""あなたは経験豊富なサイクリングルートアドバイザーです。
 以下の情報を総合的に分析し、サイクリストに役立つアドバイスを提供してください。
 
@@ -131,6 +144,7 @@ class ClaudeService:
 - 希望難易度: {difficulty}
 - 路面タイプ: {surface_summary}
 - セグメント数: {len(segments)}
+{waypoint_info}
 
 ## 天気情報（すべて日本時間 JST）
 {weather_summary}

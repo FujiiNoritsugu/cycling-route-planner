@@ -9,6 +9,8 @@ interface PlanFormProps {
   destination: Location | null;
   onOriginChange: (location: Location | null) => void;
   onDestinationChange: (location: Location | null) => void;
+  waypoints: Location[];
+  onWaypointsChange: (waypoints: Location[]) => void;
 }
 
 export function PlanForm({
@@ -18,6 +20,8 @@ export function PlanForm({
   destination,
   onOriginChange,
   onDestinationChange,
+  waypoints,
+  onWaypointsChange,
 }: PlanFormProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('moderate');
   const [avoidTraffic, setAvoidTraffic] = useState(true);
@@ -45,6 +49,10 @@ export function PlanForm({
   // Geocoding candidates
   const [originCandidates, setOriginCandidates] = useState<Location[]>([]);
   const [destCandidates, setDestCandidates] = useState<Location[]>([]);
+
+  // Waypoint search state
+  const [waypointName, setWaypointName] = useState('');
+  const [waypointCandidates, setWaypointCandidates] = useState<Location[]>([]);
 
   // Geocoding hook
   const { geocode, isLoading: isGeocoding, error: geocodeApiError } = useGeocode();
@@ -74,6 +82,7 @@ export function PlanForm({
     const request: PlanRequest = {
       origin,
       destination,
+      waypoints: waypoints.length > 0 ? waypoints : undefined,
       preferences,
       departure_time: localDateTime.toISOString(),
     };
@@ -129,6 +138,34 @@ export function PlanForm({
   const handleSelectDestCandidate = (location: Location) => {
     onDestinationChange(location);
     setDestCandidates([]);
+  };
+
+  const handleSearchWaypoint = async () => {
+    if (waypointName.trim()) {
+      setGeocodeError(null);
+      setWaypointCandidates([]);
+      const results = await geocode(waypointName);
+      if (results.length > 0) {
+        if (results.length === 1) {
+          onWaypointsChange([...waypoints, results[0]]);
+          setWaypointName('');
+        } else {
+          setWaypointCandidates(results);
+        }
+      } else if (!geocodeApiError) {
+        setGeocodeError('場所が見つかりませんでした');
+      }
+    }
+  };
+
+  const handleSelectWaypointCandidate = (location: Location) => {
+    onWaypointsChange([...waypoints, location]);
+    setWaypointCandidates([]);
+    setWaypointName('');
+  };
+
+  const handleRemoveWaypoint = (index: number) => {
+    onWaypointsChange(waypoints.filter((_, i) => i !== index));
   };
 
   return (
@@ -275,6 +312,84 @@ export function PlanForm({
                 クリア
               </button>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Waypoints */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          経由地 <span className="text-xs text-gray-500">（任意・最大10件）</span>
+        </label>
+        <div className="space-y-2">
+          {/* Existing waypoints list */}
+          {waypoints.length > 0 && (
+            <div className="space-y-1">
+              {waypoints.map((wp, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm text-gray-600 bg-orange-50 px-3 py-1.5 rounded-md">
+                  <span className="font-medium text-orange-700">{idx + 1}.</span>
+                  <span className="flex-1 truncate">
+                    {wp.name || `(${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)})`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveWaypoint(idx)}
+                    className="text-red-500 hover:text-red-700 text-xs"
+                  >
+                    削除
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Waypoint search input */}
+          {waypoints.length < 10 && (
+            <>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={waypointName}
+                  onChange={(e) => setWaypointName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearchWaypoint();
+                    }
+                  }}
+                  placeholder="経由地を検索（例: 奈良公園）"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                  disabled={isGeocoding}
+                />
+                <button
+                  type="button"
+                  onClick={handleSearchWaypoint}
+                  disabled={isGeocoding || !waypointName.trim()}
+                  className="px-3 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  追加
+                </button>
+              </div>
+              {waypointCandidates.length > 0 && (
+                <div className="border border-gray-300 rounded-md bg-white shadow-sm max-h-48 overflow-y-auto">
+                  <div className="p-2 text-xs font-semibold text-gray-700 bg-gray-50 border-b">
+                    候補（{waypointCandidates.length}件）:
+                  </div>
+                  {waypointCandidates.map((candidate, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectWaypointCandidate(candidate)}
+                      className="w-full text-left px-3 py-2 hover:bg-orange-50 border-b last:border-b-0 text-sm"
+                    >
+                      <div className="font-medium">{candidate.name}</div>
+                      <div className="text-xs text-gray-500">
+                        ({candidate.lat.toFixed(4)}, {candidate.lng.toFixed(4)})
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

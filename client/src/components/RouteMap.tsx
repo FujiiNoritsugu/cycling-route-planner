@@ -19,9 +19,23 @@ Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// Orange marker icon for waypoints (SVG data URI)
+const waypointIcon = new Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">
+      <path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0z" fill="#f97316"/>
+      <circle cx="12.5" cy="12.5" r="6" fill="white"/>
+    </svg>
+  `),
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
 interface RouteMapProps {
   origin: Location | null;
   destination: Location | null;
+  waypoints?: Location[];
   segments: RouteSegment[];
   onMapClick?: (location: Location) => void;
 }
@@ -43,7 +57,7 @@ function MapClickHandler({ onClick }: { onClick?: (location: Location) => void }
   return null;
 }
 
-export function RouteMap({ origin, destination, segments, onMapClick }: RouteMapProps) {
+export function RouteMap({ origin, destination, waypoints, segments, onMapClick }: RouteMapProps) {
   const [showGradient, setShowGradient] = useState(false);
 
   // Default center: Osaka area [34.6, 135.5]
@@ -55,10 +69,10 @@ export function RouteMap({ origin, destination, segments, onMapClick }: RouteMap
   let mapZoom = defaultZoom;
 
   if (origin && destination) {
-    mapCenter = [
-      (origin.lat + destination.lat) / 2,
-      (origin.lng + destination.lng) / 2,
-    ];
+    const allPoints = [origin, ...(waypoints || []), destination];
+    const avgLat = allPoints.reduce((s, p) => s + p.lat, 0) / allPoints.length;
+    const avgLng = allPoints.reduce((s, p) => s + p.lng, 0) / allPoints.length;
+    mapCenter = [avgLat, avgLng];
     mapZoom = 11;
   } else if (origin) {
     mapCenter = [origin.lat, origin.lng];
@@ -121,6 +135,18 @@ export function RouteMap({ origin, destination, segments, onMapClick }: RouteMap
             </Popup>
           </Marker>
         )}
+
+        {/* Waypoint markers */}
+        {waypoints && waypoints.map((wp, idx) => (
+          <Marker key={`wp-${idx}`} position={[wp.lat, wp.lng]} icon={waypointIcon}>
+            <Popup>
+              <div>
+                <strong>経由地 {idx + 1}</strong>
+                {wp.name && <div>{wp.name}</div>}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         {/* Route segments */}
         {segments.map((segment, idx) => {

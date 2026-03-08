@@ -4,6 +4,7 @@ export interface GpxExportOptions {
   routePlan: Partial<RoutePlan>;
   origin: Location;
   destination: Location;
+  waypoints?: Location[];
 }
 
 function parseDate(value: string | undefined): Date {
@@ -46,7 +47,15 @@ export function generateGpx(options: GpxExportOptions): string {
     throw new Error('ルートデータがありません');
   }
 
-  const routeName = `${origin.name || `${origin.lat},${origin.lng}`} → ${destination.name || `${destination.lat},${destination.lng}`}`;
+  const wpNames = (options.waypoints || []).map(
+    (wp) => wp.name || `${wp.lat},${wp.lng}`,
+  );
+  const allNames = [
+    origin.name || `${origin.lat},${origin.lng}`,
+    ...wpNames,
+    destination.name || `${destination.lat},${destination.lng}`,
+  ];
+  const routeName = allNames.join(' → ');
   const hours = Math.floor((routePlan.total_duration_min || 0) / 60);
   const mins = (routePlan.total_duration_min || 0) % 60;
   const description = `距離: ${routePlan.total_distance_km?.toFixed(2)} km / 獲得標高: ${routePlan.total_elevation_gain_m?.toFixed(0)} m / 所要時間: ${hours}時間${mins}分`;
@@ -75,6 +84,11 @@ export function generateGpx(options: GpxExportOptions): string {
     lines.push('  </wpt>');
   };
   addWaypoint(origin, '出発地');
+  if (options.waypoints) {
+    options.waypoints.forEach((wp, idx) => {
+      addWaypoint(wp, `経由地 ${idx + 1}`);
+    });
+  }
   addWaypoint(destination, '目的地');
 
   // Track
