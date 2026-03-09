@@ -25,6 +25,7 @@ export interface PlanRequest {
   waypoints?: Location[];
   preferences: RoutePreferences;
   departure_time: string; // ISO 8601 datetime string
+  fitness_profile?: Record<string, unknown>; // Strava fitness profile for personalized recommendations
 }
 
 export type SurfaceType = 'paved' | 'gravel' | 'dirt';
@@ -85,3 +86,27 @@ export type SSEEvent =
   | { type: 'token'; data: string }
   | { type: 'done' }
   | { type: 'error'; data: string };
+
+// Strava integration types
+export interface StravaTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  athlete_id: number;
+  athlete_name: string;
+}
+
+export interface StravaFitnessProfile {
+  has_data: boolean;
+  message?: string;
+  total_activities?: number;
+  avg_distance_km?: number;
+  max_distance_km?: number;
+  avg_speed_kmh?: number;
+  max_speed_kmh?: number;
+  avg_elevation_gain_m?: number;
+  max_elevation_gain_m?: number;
+  avg_duration_min?: number;
+  rides_per_week?: number;
+  fitness_level?: string; // "beginner" | "intermediate" | "advanced"
+}

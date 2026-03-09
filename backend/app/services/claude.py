@@ -44,6 +44,7 @@ class ClaudeService:
         total_elevation_gain_m: float,
         difficulty: str,
         waypoints: list[Location] | None = None,
+        fitness_profile: dict | None = None,
     ) -> AsyncIterator[str]:
         """Stream route analysis and recommendations from Claude.
 
@@ -54,6 +55,7 @@ class ClaudeService:
             total_elevation_gain_m: Total elevation gain in meters.
             difficulty: Requested difficulty level (easy/moderate/hard).
             waypoints: Optional intermediate waypoints.
+            fitness_profile: Optional Strava fitness profile for personalization.
 
         Yields:
             Text chunks from Claude's streaming response.
@@ -65,6 +67,7 @@ class ClaudeService:
             total_elevation_gain_m=total_elevation_gain_m,
             difficulty=difficulty,
             waypoints=waypoints,
+            fitness_profile=fitness_profile,
         )
 
         user_message = (
@@ -94,6 +97,7 @@ class ClaudeService:
         total_elevation_gain_m: float,
         difficulty: str,
         waypoints: list[Location] | None = None,
+        fitness_profile: dict | None = None,
     ) -> str:
         """Build system prompt with route and weather context.
 
@@ -104,6 +108,7 @@ class ClaudeService:
             total_elevation_gain_m: Total elevation gain.
             difficulty: Difficulty level.
             waypoints: Optional intermediate waypoints.
+            fitness_profile: Optional Strava fitness profile for personalization.
 
         Returns:
             Formatted system prompt for Claude.
@@ -135,6 +140,28 @@ class ClaudeService:
             ]
             waypoint_info = f"- 経由地: {' → '.join(wp_names)}\n"
 
+        # Build fitness profile section if available
+        fitness_section = ""
+        if fitness_profile and fitness_profile.get("has_data"):
+            fitness_section = f"""
+## ライダーのフィットネスプロファイル（Strava連携データ）
+- フィットネスレベル: {fitness_profile.get('fitness_level', '不明')}
+- 平均走行距離: {fitness_profile.get('avg_distance_km', 0)}km
+- 最大走行距離: {fitness_profile.get('max_distance_km', 0)}km
+- 平均速度: {fitness_profile.get('avg_speed_kmh', 0)}km/h
+- 平均獲得標高: {fitness_profile.get('avg_elevation_gain_m', 0)}m
+- 週あたりの走行回数: {fitness_profile.get('rides_per_week', 0)}回
+- 平均走行時間: {fitness_profile.get('avg_duration_min', 0)}分
+- 総アクティビティ数: {fitness_profile.get('total_activities', 0)}件
+"""
+
+        personalized_advice = ""
+        if fitness_profile and fitness_profile.get("has_data"):
+            personalized_advice = (
+                "6. **パーソナライズされたアドバイス**: "
+                "ライダーの実績データに基づいた個別のアドバイス\n"
+            )
+
         prompt = f"""あなたは経験豊富なサイクリングルートアドバイザーです。
 以下の情報を総合的に分析し、サイクリストに役立つアドバイスを提供してください。
 
@@ -152,14 +179,14 @@ class ClaudeService:
 ## 風の状況
 - 平均風速: {avg_wind_speed:.1f}m/s
 - 平均風向: {avg_wind_direction:.0f}度
-
+{fitness_section}
 ## 提供すべき情報（日本語で）
 1. **ルートの難易度評価**: 距離、獲得標高、路面タイプから総合評価
 2. **補給ポイント推奨**: 距離と標高から休憩・補給が必要な地点を提案
 3. **危険箇所の警告**: 強風区間、急勾配、悪天候のタイミングなど
 4. **推奨装備**: 天気・気温・風に応じたウェア、補給食、工具など
 5. **走行時のアドバイス**: ペース配分、風向きとルート方向の関係、時間帯別注意点
-
+{personalized_advice}
 注意点:
 - すべての時刻は日本時間（JST）で表示されています
 - 具体的で実用的なアドバイスを提供してください

@@ -47,6 +47,9 @@ class PlanRequest(BaseModel):
     )
     preferences: RoutePreferences = Field(..., description="Route preferences")
     departure_time: datetime = Field(..., description="Planned departure time")
+    fitness_profile: dict | None = Field(
+        None, description="Strava fitness profile for personalized recommendations"
+    )
 
 
 class RouteSegment(BaseModel):
@@ -163,3 +166,50 @@ class GeocodeResponse(BaseModel):
     """Response wrapper for geocoding results."""
 
     data: list[Location] = Field(..., description="List of matching locations")
+
+
+class StravaTokenResponse(BaseModel):
+    """Response from Strava OAuth token exchange."""
+
+    access_token: str = Field(..., description="Strava API access token")
+    refresh_token: str = Field(..., description="Strava API refresh token")
+    expires_at: int = Field(..., description="Token expiration timestamp (Unix epoch)")
+    athlete_id: int = Field(..., description="Strava athlete ID")
+    athlete_name: str = Field(..., description="Athlete display name")
+
+
+class StravaFitnessProfile(BaseModel):
+    """Fitness profile derived from Strava activity history."""
+
+    has_data: bool = Field(..., description="Whether activity data was found")
+    message: str | None = Field(None, description="Status message when no data available")
+    total_activities: int | None = Field(
+        None, description="Total number of cycling activities"
+    )
+    avg_distance_km: float | None = Field(
+        None, description="Average ride distance in kilometers"
+    )
+    max_distance_km: float | None = Field(
+        None, description="Maximum ride distance in kilometers"
+    )
+    avg_speed_kmh: float | None = Field(
+        None, description="Average ride speed in km/h"
+    )
+    max_speed_kmh: float | None = Field(
+        None, description="Maximum ride speed in km/h"
+    )
+    avg_elevation_gain_m: float | None = Field(
+        None, description="Average elevation gain per ride in meters"
+    )
+    max_elevation_gain_m: float | None = Field(
+        None, description="Maximum elevation gain in a single ride in meters"
+    )
+    avg_duration_min: float | None = Field(
+        None, description="Average ride duration in minutes"
+    )
+    rides_per_week: float | None = Field(
+        None, description="Average number of rides per week"
+    )
+    fitness_level: str | None = Field(
+        None, description="Estimated fitness level: beginner, intermediate, or advanced"
+    )

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PlanForm } from './components/PlanForm';
 import { RouteMap } from './components/RouteMap';
 import { WeatherPanel } from './components/WeatherPanel';
@@ -6,7 +6,10 @@ import { AnalysisPanel } from './components/AnalysisPanel';
 import { ElevationChart } from './components/ElevationChart';
 import { usePlan } from './hooks/usePlan';
 import { GpxExportButton } from './components/GpxExportButton';
-import type { Location } from './types';
+import { StravaConnect } from './components/StravaConnect';
+import { StravaCallback } from './components/StravaCallback';
+import { useStrava } from './hooks/useStrava';
+import type { Location, PlanRequest } from './types';
 
 function App() {
   const [origin, setOrigin] = useState<Location | null>(null);
@@ -23,6 +26,31 @@ function App() {
     submitPlan,
     reset,
   } = usePlan();
+
+  const {
+    isConnected: stravaConnected,
+    athleteName,
+    fitnessProfile,
+    isLoading: stravaLoading,
+    error: stravaError,
+    connect: stravaConnect,
+    disconnect: stravaDisconnect,
+    handleCallback: stravaCallback,
+  } = useStrava();
+
+  const handleSubmitPlan = useCallback((request: PlanRequest) => {
+    const enrichedRequest = {
+      ...request,
+      fitness_profile: fitnessProfile?.has_data ? (fitnessProfile as unknown as Record<string, unknown>) : undefined,
+    };
+    submitPlan(enrichedRequest);
+  }, [submitPlan, fitnessProfile]);
+
+  // Check if this is a Strava callback
+  const isStravaCallback = window.location.pathname === '/strava/callback';
+  if (isStravaCallback) {
+    return <StravaCallback onCallback={stravaCallback} />;
+  }
 
   // Load OFUSE widget script
   useEffect(() => {
@@ -108,7 +136,7 @@ function App() {
           {/* Left Sidebar - Plan Form */}
           <div className="lg:col-span-3">
             <PlanForm
-              onSubmit={submitPlan}
+              onSubmit={handleSubmitPlan}
               isLoading={isLoading}
               origin={origin}
               destination={destination}
@@ -117,6 +145,19 @@ function App() {
               waypoints={waypoints}
               onWaypointsChange={setWaypoints}
             />
+
+            {/* Strava Integration */}
+            <div className="mt-4">
+              <StravaConnect
+                isConnected={stravaConnected}
+                athleteName={athleteName}
+                fitnessProfile={fitnessProfile}
+                isLoading={stravaLoading}
+                error={stravaError}
+                onConnect={stravaConnect}
+                onDisconnect={stravaDisconnect}
+              />
+            </div>
 
             {/* Click Mode Toggle */}
             {origin && destination && (

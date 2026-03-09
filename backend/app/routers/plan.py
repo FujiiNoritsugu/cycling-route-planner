@@ -149,6 +149,7 @@ async def plan_route(
                 total_elevation_gain_m=total_elevation_gain_m,
                 difficulty=request.preferences.difficulty,
                 waypoints=request.waypoints,
+                fitness_profile=request.fitness_profile,
             ):
                 llm_analysis_parts.append(token)
                 yield format_sse("token", token)
