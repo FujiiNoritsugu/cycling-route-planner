@@ -48,12 +48,10 @@ function App() {
 
   // Check if this is a Strava callback
   const isStravaCallback = window.location.pathname === '/strava/callback';
-  if (isStravaCallback) {
-    return <StravaCallback onCallback={stravaCallback} />;
-  }
 
   // Load OFUSE widget script
   useEffect(() => {
+    if (isStravaCallback) return;
     const script = document.createElement('script');
     script.src = 'https://ofuse.me/assets/platform/widget.js';
     script.async = true;
@@ -63,7 +61,11 @@ function App() {
     return () => {
       document.body.removeChild(script);
     };
-  }, []);
+  }, [isStravaCallback]);
+
+  if (isStravaCallback) {
+    return <StravaCallback onCallback={stravaCallback} />;
+  }
 
   const handleMapClick = (location: Location) => {
     if (clickMode === 'waypoint') {

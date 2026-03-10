@@ -4,11 +4,17 @@ Provides OAuth2 authentication and activity data retrieval from Strava.
 """
 
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
 
 from ..schemas import StravaFitnessProfile, StravaTokenResponse
 from ..services.strava import StravaService
+
+# Load environment variables from .env file
+_project_root = Path(__file__).parent.parent.parent.parent
+load_dotenv(dotenv_path=_project_root / ".env")
 
 router = APIRouter(prefix="/api/strava", tags=["strava"])
 

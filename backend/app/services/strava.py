@@ -6,8 +6,14 @@ profile generation from Strava cycling data.
 
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import httpx
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+_project_root = Path(__file__).parent.parent.parent.parent
+load_dotenv(dotenv_path=_project_root / ".env")
 
 STRAVA_API_BASE = "https://www.strava.com/api/v3"
 STRAVA_AUTH_URL = "https://www.strava.com/oauth/token"
