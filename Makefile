@@ -55,7 +55,8 @@ deploy-backend:
 		--image $$IMAGE \
 		--region asia-northeast1 \
 		--allow-unauthenticated \
-		--set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest,ORS_API_KEY=ors-api-key:latest \
+		--set-env-vars=FRONTEND_URL=https://cycling-frontend-1010478563120.asia-northeast1.run.app,FRONTEND_URL_ALT=https://cycling-frontend-urtcvfxxra-an.a.run.app \
+		--set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest,ORS_API_KEY=ors-api-key:latest,STRAVA_CLIENT_ID=strava-client-id:latest,STRAVA_CLIENT_SECRET=strava-client-secret:latest,STRAVA_REDIRECT_URI=strava-redirect-uri:latest \
 		--memory 1Gi \
 		--cpu 1 \
 		--timeout 300 \

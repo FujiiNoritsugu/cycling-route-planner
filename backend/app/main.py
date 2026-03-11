@@ -62,10 +62,11 @@ origins = [
     "http://127.0.0.1:5173",
 ]
 
-# Add production frontend URL from environment variable
-frontend_url = os.getenv("FRONTEND_URL")
-if frontend_url:
-    origins.append(frontend_url)
+# Add production frontend URLs from environment variables
+for env_key in ("FRONTEND_URL", "FRONTEND_URL_ALT"):
+    frontend_url = os.getenv(env_key)
+    if frontend_url:
+        origins.append(frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
